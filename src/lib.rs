@@ -14,6 +14,7 @@
 /// along with this program.  If not, see <https://www.gnu.org/licenses/>.
 use error::SerSledError;
 use serde::{Deserialize, Serialize};
+use std::ops::RangeBounds;
 
 pub mod error;
 pub mod tests;
@@ -41,7 +42,7 @@ impl AsRef<[u8]> for SerialiserMode {
 }
 
 pub struct SerSledDb {
-    pub inner_db: sled::Db,
+    inner_db: sled::Db,
     ser_mode: SerialiserMode,
 }
 
@@ -52,8 +53,7 @@ impl SerSledDb {
         sled_db: sled::Db,
         ser_mode: SerialiserMode,
     ) -> Result<Self, SerSledError> {
-        let config_tree = sled_db.open_tree("ser-sled_config")?;
-        let ser_config = match config_tree.get(CONFIGUATION_TREE_KEY)? {
+        let ser_config = match sled_db.get(CONFIGUATION_TREE_KEY)? {
             Some(bytes) => {
                 match bytes.first() {
                     // Bincode config
@@ -62,7 +62,7 @@ impl SerSledDb {
                     Some(_) | None => {
                         // Found bytes, but couldn't read them
                         let _insert_config =
-                            config_tree.insert(CONFIGUATION_TREE_KEY, ser_mode.as_ref())?;
+                            sled_db.insert(CONFIGUATION_TREE_KEY, ser_mode.as_ref())?;
 
                         ser_mode
                     }
@@ -70,8 +70,7 @@ impl SerSledDb {
             }
             None => {
                 // No config found
-                let _insert_config =
-                    config_tree.insert(CONFIGUATION_TREE_KEY, ser_mode.as_ref())?;
+                let _insert_config = sled_db.insert(CONFIGUATION_TREE_KEY, ser_mode.as_ref())?;
 
                 ser_mode
             }
@@ -293,16 +292,15 @@ impl SerSledTree {
         }
     }
 
-    pub fn range_key_bytes<K: AsRef<[u8]>, V: for<'de> Deserialize<'de>>(
+    pub fn range_key_bytes<'a, K: AsRef<[u8]>, R: RangeBounds<K>, V: for<'de> Deserialize<'de>>(
         &self,
-        key_start: &K,
-        key_end: &K,
+        range: R,
     ) -> impl Iterator<Item = (Vec<u8>, V)> {
         match self.ser_mode {
             #[cfg(feature = "bincode")]
             SerialiserMode::BINCODE => self
                 .inner_tree
-                .range(key_start.as_ref()..key_end.as_ref())
+                .range(range)
                 .filter(|res| res.is_ok())
                 .filter_map(|res| {
                     let (key_ivec, value_ivec) =

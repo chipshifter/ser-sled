@@ -7,7 +7,7 @@ pub enum SerSledError {
     #[error("Serialiser error")]
     SerialiserError(#[from] SerialiserError),
     #[error("This operation is not allowed")]
-    IllegalOperation
+    IllegalOperation,
 }
 
 #[derive(Error, Debug)]
