@@ -24,6 +24,7 @@ pub const BINCODE_CONFIG: bincode::config::Configuration<bincode::config::BigEnd
     bincode::config::standard().with_big_endian();
 pub const CONFIGUATION_TREE_KEY: &[u8] = b"_ser-sled_serialiser";
 
+#[derive(Debug, Clone, Copy)]
 pub enum SerialiserMode {
     #[cfg(feature = "bincode")]
     BINCODE,
@@ -39,32 +40,20 @@ impl AsRef<[u8]> for SerialiserMode {
     }
 }
 
-pub struct SerSled {
-    pub inner_tree: sled::Tree,
+pub struct SerSledDb {
+    pub inner_db: sled::Db,
     ser_mode: SerialiserMode,
 }
 
-impl SerSled {
-    /// Loads the tree without storing the serialiser used in the tree.
-    /// It is up to you to remember/select the correct one if you want to read data.
-    pub fn new(
-        // Also works with sled::Db since it implements Deref<sled::Tree>
-        sled_tree: sled::Tree,
-        ser_mode: SerialiserMode,
-    ) -> Self {
-        SerSled {
-            inner_tree: sled_tree,
-            ser_mode,
-        }
-    }
-
+impl SerSledDb {
     /// Loads the tree and attempts to load the serialiser mode stored in the tree.
     /// Otherwise, it will use `ser_mode` and store that in the tree configuration.
     pub fn new_from_config_or_else(
-        sled_tree: sled::Tree,
+        sled_db: sled::Db,
         ser_mode: SerialiserMode,
     ) -> Result<Self, SerSledError> {
-        let ser_config = match sled_tree.get(CONFIGUATION_TREE_KEY)? {
+        let config_tree = sled_db.open_tree("ser-sled_config")?;
+        let ser_config = match config_tree.get(CONFIGUATION_TREE_KEY)? {
             Some(bytes) => {
                 match bytes.first() {
                     // Bincode config
@@ -73,7 +62,7 @@ impl SerSled {
                     Some(_) | None => {
                         // Found bytes, but couldn't read them
                         let _insert_config =
-                            sled_tree.insert(CONFIGUATION_TREE_KEY, ser_mode.as_ref())?;
+                            config_tree.insert(CONFIGUATION_TREE_KEY, ser_mode.as_ref())?;
 
                         ser_mode
                     }
@@ -81,16 +70,46 @@ impl SerSled {
             }
             None => {
                 // No config found
-                let _insert_config = sled_tree.insert(CONFIGUATION_TREE_KEY, ser_mode.as_ref())?;
+                let _insert_config =
+                    config_tree.insert(CONFIGUATION_TREE_KEY, ser_mode.as_ref())?;
 
                 ser_mode
             }
         };
 
-        Ok(SerSled {
-            inner_tree: sled_tree,
+        Ok(Self {
+            inner_db: sled_db,
             ser_mode: ser_config,
         })
+    }
+
+    pub fn open_tree(&self, tree_name: &str) -> Result<SerSledTree, SerSledError> {
+        let tree = self.inner_db.open_tree(tree_name)?;
+
+        Ok(SerSledTree {
+            inner_tree: tree,
+            ser_mode: self.ser_mode,
+        })
+    }
+}
+
+pub struct SerSledTree {
+    pub inner_tree: sled::Tree,
+    ser_mode: SerialiserMode,
+}
+
+impl SerSledTree {
+    /// Loads the tree without storing the serialiser used in the tree.
+    /// It is up to you to remember/select the correct one if you want to read data.
+    pub fn new(
+        // Also works with sled::Db since it implements Deref<sled::Tree>
+        sled_tree: sled::Tree,
+        ser_mode: SerialiserMode,
+    ) -> Self {
+        Self {
+            inner_tree: sled_tree,
+            ser_mode,
+        }
     }
 
     /// Retrieve value from table.
