@@ -49,4 +49,21 @@ mod bincode_tests {
             Some(IVec::from(&[0]))
         );
     }
+
+    #[test]
+    fn test_iter() {
+        let db = sled::Config::new().temporary(true).open().unwrap();
+        let ser_db = SerSled::new(db.deref().clone(), crate::SerialiserMode::BINCODE);
+
+        let bytes = vec![2, 3];
+        let bytes_2 = vec![3, 3];
+
+        ser_db.insert(&[1u8], &bytes).unwrap();
+        ser_db.insert(&[2u8], &bytes_2).unwrap();
+
+        let mut iter = ser_db.iter();
+        assert_eq!(iter.next(), Some(([1u8], bytes)));
+        assert_eq!(iter.next(), Some(([2u8], bytes_2)));
+        assert_eq!(iter.next(), None);
+    }
 }

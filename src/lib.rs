@@ -80,8 +80,7 @@ impl SerSled {
             }
             None => {
                 // No config found
-                let _insert_config =
-                    sled_tree.insert(CONFIGUATION_TREE_KEY, ser_mode.as_ref())?;
+                let _insert_config = sled_tree.insert(CONFIGUATION_TREE_KEY, ser_mode.as_ref())?;
 
                 ser_mode
             }
@@ -187,6 +186,40 @@ impl SerSled {
                 }
                 None => Ok(None),
             },
+        }
+    }
+
+    pub fn iter<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
+        &self,
+    ) -> impl Iterator<Item = (K, V)> {
+        match self.ser_mode {
+            #[cfg(feature = "bincode")]
+            SerialiserMode::BINCODE => self
+                .inner_tree
+                .into_iter()
+                .filter(|res| res.is_ok())
+                .filter_map(|res| {
+                    let (key_ivec, value_ivec) =
+                        res.expect("previous filter checked that res is Ok()");
+
+                    let key = bincode::serde::decode_borrowed_from_slice::<K, _>(
+                        &key_ivec,
+                        BINCODE_CONFIG,
+                    )
+                    .ok();
+
+                    let value = bincode::serde::decode_borrowed_from_slice::<V, _>(
+                        &value_ivec,
+                        BINCODE_CONFIG,
+                    )
+                    .ok();
+
+                    if key.is_some() && value.is_some() {
+                        Some((key.expect("key is Some"), value.expect("value is Some")))
+                    } else {
+                        None
+                    }
+                }),
         }
     }
 }
