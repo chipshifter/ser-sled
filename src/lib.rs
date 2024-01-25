@@ -12,7 +12,7 @@
 ///
 /// You should have received a copy of the GNU General Public License
 /// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-use error::{SerSledError, SerialiserError};
+use error::SerSledError;
 use serde::{Deserialize, Serialize};
 
 pub mod error;
@@ -52,18 +52,13 @@ impl SerSled {
         match self.ser_mode {
             #[cfg(feature = "bincode")]
             SerialiserMode::BINCODE => {
-                let bytes = bincode::serde::encode_to_vec(key, BINCODE_CONFIG).map_err(|e| {
-                    SerialiserError::BincodeError(error::BincodeError::EncodeError(e))
-                })?;
+                let bytes = bincode::serde::encode_to_vec(key, BINCODE_CONFIG)?;
                 match self.inner_tree.get(bytes)? {
                     Some(res_ivec) => {
                         let deser = bincode::serde::decode_borrowed_from_slice::<V, _>(
                             &res_ivec,
                             BINCODE_CONFIG,
-                        )
-                        .map_err(|e| {
-                            SerialiserError::BincodeError(error::BincodeError::DecodeError(e))
-                        })?;
+                        )?;
 
                         Ok(Some(deser))
                     }
@@ -81,24 +76,15 @@ impl SerSled {
         match self.ser_mode {
             #[cfg(feature = "bincode")]
             SerialiserMode::BINCODE => {
-                let key_bytes =
-                    bincode::serde::encode_to_vec(key, BINCODE_CONFIG).map_err(|e| {
-                        SerialiserError::BincodeError(error::BincodeError::EncodeError(e))
-                    })?;
-                let value_bytes =
-                    bincode::serde::encode_to_vec(value, BINCODE_CONFIG).map_err(|e| {
-                        SerialiserError::BincodeError(error::BincodeError::EncodeError(e))
-                    })?;
+                let key_bytes = bincode::serde::encode_to_vec(key, BINCODE_CONFIG)?;
+                let value_bytes = bincode::serde::encode_to_vec(value, BINCODE_CONFIG)?;
 
                 match self.inner_tree.insert(key_bytes, value_bytes)? {
                     Some(ivec) => {
                         let old_value = bincode::serde::decode_borrowed_from_slice::<V, _>(
                             &ivec,
                             BINCODE_CONFIG,
-                        )
-                        .map_err(|e| {
-                            SerialiserError::BincodeError(error::BincodeError::DecodeError(e))
-                        })?;
+                        )?;
 
                         Ok(Some(old_value))
                     }
@@ -118,18 +104,12 @@ impl SerSled {
                     let key = bincode::serde::decode_borrowed_from_slice::<K, _>(
                         &key_ivec,
                         BINCODE_CONFIG,
-                    )
-                    .map_err(|e| {
-                        SerialiserError::BincodeError(error::BincodeError::DecodeError(e))
-                    })?;
+                    )?;
 
                     let value = bincode::serde::decode_borrowed_from_slice::<V, _>(
                         &value_ivec,
                         BINCODE_CONFIG,
-                    )
-                    .map_err(|e| {
-                        SerialiserError::BincodeError(error::BincodeError::DecodeError(e))
-                    })?;
+                    )?;
 
                     Ok(Some((key, value)))
                 }
@@ -148,18 +128,12 @@ impl SerSled {
                     let key = bincode::serde::decode_borrowed_from_slice::<K, _>(
                         &key_ivec,
                         BINCODE_CONFIG,
-                    )
-                    .map_err(|e| {
-                        SerialiserError::BincodeError(error::BincodeError::DecodeError(e))
-                    })?;
+                    )?;
 
                     let value = bincode::serde::decode_borrowed_from_slice::<V, _>(
                         &value_ivec,
                         BINCODE_CONFIG,
-                    )
-                    .map_err(|e| {
-                        SerialiserError::BincodeError(error::BincodeError::DecodeError(e))
-                    })?;
+                    )?;
 
                     Ok(Some((key, value)))
                 }

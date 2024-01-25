@@ -23,3 +23,19 @@ pub enum BincodeError {
     #[error("Decode error")]
     DecodeError(#[from] bincode::error::DecodeError),
 }
+
+impl From<bincode::error::DecodeError> for SerSledError {
+    fn from(value: bincode::error::DecodeError) -> Self {
+        Self::SerialiserError(SerialiserError::BincodeError(BincodeError::DecodeError(
+            value,
+        )))
+    }
+}
+
+impl From<bincode::error::EncodeError> for SerSledError {
+    fn from(value: bincode::error::EncodeError) -> Self {
+        Self::SerialiserError(SerialiserError::BincodeError(BincodeError::EncodeError(
+            value,
+        )))
+    }
+}
