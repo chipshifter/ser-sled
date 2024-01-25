@@ -22,18 +22,30 @@ pub mod tests;
 #[cfg(feature = "bincode")]
 pub const BINCODE_CONFIG: bincode::config::Configuration<bincode::config::BigEndian> =
     bincode::config::standard().with_big_endian();
+pub const CONFIGUATION_TREE_KEY: &[u8] = b"_ser-sled_serialiser";
 
 pub enum SerialiserMode {
     #[cfg(feature = "bincode")]
     BINCODE,
 }
 
+/// Convert the enum into "bytes" for inserting config into the sled tree.
+impl AsRef<[u8]> for SerialiserMode {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            SerialiserMode::BINCODE => &[0u8],
+        }
+    }
+}
+
 pub struct SerSled {
-    inner_tree: sled::Tree,
+    pub inner_tree: sled::Tree,
     ser_mode: SerialiserMode,
 }
 
 impl SerSled {
+    /// Loads the tree without storing the serialiser used in the tree.
+    /// It is up to you to remember/select the correct one if you want to read data.
     pub fn new(
         // Also works with sled::Db since it implements Deref<sled::Tree>
         sled_tree: sled::Tree,
@@ -43,6 +55,42 @@ impl SerSled {
             inner_tree: sled_tree,
             ser_mode,
         }
+    }
+
+    /// Loads the tree and attempts to load the serialiser mode stored in the tree.
+    /// Otherwise, it will use `ser_mode` and store that in the tree configuration.
+    pub fn new_from_config_or_else(
+        sled_tree: sled::Tree,
+        ser_mode: SerialiserMode,
+    ) -> Result<Self, SerSledError> {
+        let ser_config = match sled_tree.get(CONFIGUATION_TREE_KEY)? {
+            Some(bytes) => {
+                match bytes.first() {
+                    // Bincode config
+                    Some(0) => SerialiserMode::BINCODE,
+                    // No readable config
+                    Some(_) | None => {
+                        // Found bytes, but couldn't read them
+                        let _insert_config =
+                            sled_tree.insert(CONFIGUATION_TREE_KEY, ser_mode.as_ref())?;
+
+                        ser_mode
+                    }
+                }
+            }
+            None => {
+                // No config found
+                let _insert_config =
+                    sled_tree.insert(CONFIGUATION_TREE_KEY, ser_mode.as_ref())?;
+
+                ser_mode
+            }
+        };
+
+        Ok(SerSled {
+            inner_tree: sled_tree,
+            ser_mode: ser_config,
+        })
     }
 
     pub fn get<K: Serialize, V: for<'de> Deserialize<'de>>(
