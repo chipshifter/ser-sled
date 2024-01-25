@@ -6,6 +6,8 @@ pub enum SerSledError {
     SledError(#[from] sled::Error),
     #[error("Serialiser error")]
     SerialiserError(#[from] SerialiserError),
+    #[error("This operation is not allowed")]
+    IllegalOperation
 }
 
 #[derive(Error, Debug)]

@@ -101,6 +101,11 @@ impl SerSled {
             #[cfg(feature = "bincode")]
             SerialiserMode::BINCODE => {
                 let bytes = bincode::serde::encode_to_vec(key, BINCODE_CONFIG)?;
+
+                if &bytes == CONFIGUATION_TREE_KEY {
+                    return Err(SerSledError::IllegalOperation);
+                }
+
                 match self.inner_tree.get(bytes)? {
                     Some(res_ivec) => {
                         let deser = bincode::serde::decode_borrowed_from_slice::<V, _>(
@@ -126,6 +131,10 @@ impl SerSled {
             SerialiserMode::BINCODE => {
                 let key_bytes = bincode::serde::encode_to_vec(key, BINCODE_CONFIG)?;
                 let value_bytes = bincode::serde::encode_to_vec(value, BINCODE_CONFIG)?;
+
+                if &key_bytes == CONFIGUATION_TREE_KEY {
+                    return Err(SerSledError::IllegalOperation);
+                }
 
                 match self.inner_tree.insert(key_bytes, value_bytes)? {
                     Some(ivec) => {

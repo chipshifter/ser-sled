@@ -5,7 +5,7 @@ mod bincode_tests {
     use std::ops::Deref;
 
     #[test]
-    fn test_insert_and_get() {
+    fn insert_and_get() {
         let db = sled::Config::new().temporary(true).open().unwrap();
         let ser_db = SerSled::new(db.deref().clone(), crate::SerialiserMode::BINCODE);
 
@@ -15,7 +15,7 @@ mod bincode_tests {
     }
 
     #[test]
-    fn test_first_and_last() {
+    fn first_and_last() {
         let db = sled::Config::new().temporary(true).open().unwrap();
         let ser_db = SerSled::new(db.deref().clone(), crate::SerialiserMode::BINCODE);
 
@@ -30,7 +30,7 @@ mod bincode_tests {
     }
 
     #[test]
-    fn test_load_config() {
+    fn load_config() {
         use crate::CONFIGUATION_TREE_KEY;
         use sled::IVec;
 
@@ -51,7 +51,7 @@ mod bincode_tests {
     }
 
     #[test]
-    fn test_iter() {
+    fn iter() {
         let db = sled::Config::new().temporary(true).open().unwrap();
         let ser_db = SerSled::new(db.deref().clone(), crate::SerialiserMode::BINCODE);
 
