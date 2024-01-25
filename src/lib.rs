@@ -43,7 +43,7 @@ impl AsRef<[u8]> for SerialiserMode {
 
 pub struct SerSledDb {
     inner_db: sled::Db,
-    ser_mode: SerialiserMode,
+    pub ser_mode: SerialiserMode,
 }
 
 impl SerSledDb {
@@ -93,8 +93,8 @@ impl SerSledDb {
 }
 
 pub struct SerSledTree {
-    pub inner_tree: sled::Tree,
-    ser_mode: SerialiserMode,
+    inner_tree: sled::Tree,
+    pub ser_mode: SerialiserMode,
 }
 
 impl SerSledTree {
