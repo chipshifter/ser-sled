@@ -4,7 +4,7 @@
 /// it under the terms of the GNU General Public License as published by
 /// the Free Software Foundation, either version 3 of the License, or
 /// (at your option) any later version.
-/// 
+///
 /// This program is distributed in the hope that it will be useful,
 /// but WITHOUT ANY WARRANTY; without even the implied warranty of
 /// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -12,7 +12,6 @@
 ///
 /// You should have received a copy of the GNU General Public License
 /// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 use error::{SerSledError, SerialiserError};
 use serde::{Deserialize, Serialize};
 
@@ -106,6 +105,66 @@ impl SerSled {
                     None => Ok(None),
                 }
             }
+        }
+    }
+
+    pub fn first<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
+        &self,
+    ) -> Result<Option<(K, V)>, SerSledError> {
+        match self.ser_mode {
+            #[cfg(feature = "bincode")]
+            SerialiserMode::BINCODE => match self.inner_tree.first()? {
+                Some((key_ivec, value_ivec)) => {
+                    let key = bincode::serde::decode_borrowed_from_slice::<K, _>(
+                        &key_ivec,
+                        BINCODE_CONFIG,
+                    )
+                    .map_err(|e| {
+                        SerialiserError::BincodeError(error::BincodeError::DecodeError(e))
+                    })?;
+
+                    let value = bincode::serde::decode_borrowed_from_slice::<V, _>(
+                        &value_ivec,
+                        BINCODE_CONFIG,
+                    )
+                    .map_err(|e| {
+                        SerialiserError::BincodeError(error::BincodeError::DecodeError(e))
+                    })?;
+
+                    Ok(Some((key, value)))
+                }
+                None => Ok(None),
+            },
+        }
+    }
+
+    pub fn last<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
+        &self,
+    ) -> Result<Option<(K, V)>, SerSledError> {
+        match self.ser_mode {
+            #[cfg(feature = "bincode")]
+            SerialiserMode::BINCODE => match self.inner_tree.last()? {
+                Some((key_ivec, value_ivec)) => {
+                    let key = bincode::serde::decode_borrowed_from_slice::<K, _>(
+                        &key_ivec,
+                        BINCODE_CONFIG,
+                    )
+                    .map_err(|e| {
+                        SerialiserError::BincodeError(error::BincodeError::DecodeError(e))
+                    })?;
+
+                    let value = bincode::serde::decode_borrowed_from_slice::<V, _>(
+                        &value_ivec,
+                        BINCODE_CONFIG,
+                    )
+                    .map_err(|e| {
+                        SerialiserError::BincodeError(error::BincodeError::DecodeError(e))
+                    })?;
+
+                    Ok(Some((key, value)))
+                }
+                None => Ok(None),
+            },
         }
     }
 }
