@@ -136,27 +136,6 @@ impl SerSledTree {
         }
     }
 
-    /// Retrieve value from table using raw key bytes.
-    pub fn get_key_bytes<V: for<'de> Deserialize<'de>>(
-        &self,
-        key: &[u8],
-    ) -> Result<Option<V>, SerSledError> {
-        match self.inner_tree.get(key)? {
-            Some(res_ivec) => match self.ser_mode {
-                #[cfg(feature = "bincode")]
-                SerialiserMode::BINCODE => {
-                    let deser = bincode::serde::decode_borrowed_from_slice::<V, _>(
-                        &res_ivec,
-                        BINCODE_CONFIG,
-                    )?;
-
-                    Ok(Some(deser))
-                }
-            },
-            None => Ok(None),
-        }
-    }
-
     /// Insert value into table.
     pub fn insert<K: Serialize, V: Serialize + for<'de> Deserialize<'de>>(
         &self,
@@ -170,32 +149,6 @@ impl SerSledTree {
                 let value_bytes = bincode::serde::encode_to_vec(value, BINCODE_CONFIG)?;
 
                 match self.inner_tree.insert(key_bytes, value_bytes)? {
-                    Some(ivec) => {
-                        let old_value = bincode::serde::decode_borrowed_from_slice::<V, _>(
-                            &ivec,
-                            BINCODE_CONFIG,
-                        )?;
-
-                        Ok(Some(old_value))
-                    }
-                    None => Ok(None),
-                }
-            }
-        }
-    }
-
-    /// Insert value into table using raw key bytes.
-    pub fn insert_key_bytes<V: Serialize + for<'de> Deserialize<'de>>(
-        &self,
-        key: &[u8],
-        value: &V,
-    ) -> Result<Option<V>, SerSledError> {
-        match self.ser_mode {
-            #[cfg(feature = "bincode")]
-            SerialiserMode::BINCODE => {
-                let value_bytes = bincode::serde::encode_to_vec(value, BINCODE_CONFIG)?;
-
-                match self.inner_tree.insert(key, value_bytes)? {
                     Some(ivec) => {
                         let old_value = bincode::serde::decode_borrowed_from_slice::<V, _>(
                             &ivec,
