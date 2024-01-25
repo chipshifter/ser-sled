@@ -33,6 +33,7 @@ pub enum SerialiserMode {
 impl AsRef<[u8]> for SerialiserMode {
     fn as_ref(&self) -> &[u8] {
         match self {
+            #[cfg(feature = "bincode")]
             SerialiserMode::BINCODE => &[0u8],
         }
     }
