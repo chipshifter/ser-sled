@@ -12,9 +12,6 @@ mod bincode_tests {
         let bytes = vec![2, 3, 5, 7, 9, 11];
         ser_db.insert(b"w", &bytes).unwrap();
         assert_eq!(ser_db.get(b"w").unwrap(), Some(bytes));
-
-        drop(ser_db);
-        drop(db);
     }
 
     #[test]
@@ -30,9 +27,6 @@ mod bincode_tests {
 
         assert_eq!(ser_db.first().unwrap(), Some(([1u8], bytes)));
         assert_eq!(ser_db.last().unwrap(), Some(([2u8], bytes_2)));
-
-        drop(ser_db);
-        drop(db);
     }
 
     #[test]
@@ -54,8 +48,5 @@ mod bincode_tests {
             ser_db.inner_tree.get(CONFIGUATION_TREE_KEY).unwrap(),
             Some(IVec::from(&[0]))
         );
-
-        drop(ser_db);
-        drop(db);
     }
 }
