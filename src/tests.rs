@@ -1,7 +1,7 @@
 #[cfg(feature = "bincode")]
 #[cfg(test)]
 mod bincode_tests {
-    use crate::SerSledDb;
+    use crate::{SerSledDb, SerSledTree};
 
     #[test]
     fn insert_and_get() {
