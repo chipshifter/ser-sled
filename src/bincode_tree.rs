@@ -8,6 +8,7 @@ use crate::{error::SerSledError, SerSledTree};
 pub const BINCODE_CONFIG: bincode::config::Configuration<bincode::config::BigEndian> =
     bincode::config::standard().with_big_endian();
 
+#[derive(Clone)]
 pub struct BincodeSledTree {
     inner_tree: sled::Tree,
 }
