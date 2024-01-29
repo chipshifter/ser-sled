@@ -1,4 +1,3 @@
-use bincode_tree::BincodeSledTree;
 /// Copyright (C) 2024 Broward Apps
 ///
 /// This program is free software: you can redistribute it and/or modify
@@ -17,7 +16,10 @@ use error::SerSledError;
 use serde::{Deserialize, Serialize};
 use std::ops::RangeBounds;
 
+#[cfg(feature = "bincode")]
 pub mod bincode_tree;
+#[cfg(feature = "bincode")]
+use bincode_tree::BincodeSledTree;
 pub mod error;
 pub mod tests;
 
@@ -55,10 +57,10 @@ impl SerSledDb {
             Some(bytes) => {
                 match bytes.first() {
                     // Bincode config
+                    #[cfg(feature = "bincode")]
                     Some(0) => SerialiserMode::BINCODE,
                     // No readable config
                     Some(_) | None => {
-                        // Found bytes, but couldn't read them
                         let _insert_config =
                             sled_db.insert(CONFIGUATION_TREE_KEY, ser_mode.as_ref())?;
 

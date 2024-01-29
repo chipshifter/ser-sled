@@ -5,16 +5,13 @@ use serde::{Deserialize, Serialize};
 use crate::{error::SerSledError, SerSledTree};
 
 /// Sled is optimised to work with big-endian bytes
-#[cfg(feature = "bincode")]
 pub const BINCODE_CONFIG: bincode::config::Configuration<bincode::config::BigEndian> =
     bincode::config::standard().with_big_endian();
 
-#[cfg(feature = "bincode")]
 pub struct BincodeSledTree {
     inner_tree: sled::Tree,
 }
 
-#[cfg(feature = "bincode")]
 impl SerSledTree for BincodeSledTree {
     fn new(sled_tree: sled::Tree) -> Self {
         Self {
