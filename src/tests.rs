@@ -9,7 +9,7 @@ mod bincode_tests {
         let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
             .expect("db should open");
         let tree = ser_db
-            .open_tree("insert_and_get")
+            .open_tree_impl("insert_and_get")
             .expect("tree should open");
 
         let bytes = vec![2, 3, 5, 7, 9, 11];
@@ -23,7 +23,7 @@ mod bincode_tests {
         let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
             .expect("db should open");
         let tree = ser_db
-            .open_tree("first_and_last")
+            .open_tree_impl("first_and_last")
             .expect("tree should open");
 
         let bytes = vec![2, 3];
@@ -57,7 +57,7 @@ mod bincode_tests {
         let db = sled::Config::new().temporary(true).open().unwrap();
         let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
             .expect("db should open");
-        let tree = ser_db.open_tree("iter").expect("tree should open");
+        let tree = ser_db.open_tree_impl("iter").expect("tree should open");
 
         let bytes = vec![2, 3];
         let bytes_2 = vec![3, 3];
@@ -76,7 +76,7 @@ mod bincode_tests {
         let db = sled::Config::new().temporary(true).open().unwrap();
         let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
             .expect("db should open");
-        let tree = ser_db.open_tree("range").expect("tree should open");
+        let tree = ser_db.open_tree_impl("range").expect("tree should open");
 
         let bytes = vec![2, 3];
         let bytes_2 = vec![3, 3];
@@ -104,7 +104,7 @@ mod bincode_tests {
         let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
             .expect("db should open");
         let tree = ser_db
-            .open_tree("is_binary_order_preserved")
+            .open_tree_impl("is_binary_order_preserved")
             .expect("tree should open");
 
         tree.insert(&[1u8], &[1u8]).unwrap();
