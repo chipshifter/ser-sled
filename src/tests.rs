@@ -97,4 +97,26 @@ mod bincode_tests {
         assert_eq!(range.next(), Some((vec![2], bytes_2)));
         assert_eq!(range.next(), None);
     }
+
+    #[test]
+    fn is_binary_order_preserved() {
+        let db = sled::Config::new().temporary(true).open().unwrap();
+        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
+            .expect("db should open");
+        let tree = ser_db
+            .open_tree("is_binary_order_preserved")
+            .expect("tree should open");
+
+        tree.insert(&[1u8], &[1u8]).unwrap();
+        tree.insert(&[4u8], &[4u8]).unwrap();
+        tree.insert(&[3u8], &[3u8]).unwrap();
+        tree.insert(&[2u8], &[2u8]).unwrap();
+
+        let mut iter = tree.iter();
+        assert_eq!(iter.next(), Some(([1u8], [1u8])));
+        assert_eq!(iter.next(), Some(([2u8], [2u8])));
+        assert_eq!(iter.next(), Some(([3u8], [3u8])));
+        assert_eq!(iter.next(), Some(([4u8], [4u8])));
+        assert_eq!(iter.next(), None);
+    }
 }
