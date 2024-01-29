@@ -41,6 +41,7 @@ impl AsRef<[u8]> for SerialiserMode {
     }
 }
 
+#[derive(Clone)]
 pub struct SerSledDb {
     inner_db: sled::Db,
     pub ser_mode: SerialiserMode,
@@ -91,7 +92,7 @@ impl SerSledDb {
 
     pub fn open_tree<T: SerSledTree>(&self, tree_name: &str) -> Result<T, SerSledError> {
         let tree = self.inner_db.open_tree(tree_name)?;
-        
+
         Ok(T::new(tree))
     }
 }
