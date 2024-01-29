@@ -91,9 +91,8 @@ impl SerSledDb {
 
     pub fn open_tree<T: SerSledTree>(&self, tree_name: &str) -> Result<T, SerSledError> {
         let tree = self.inner_db.open_tree(tree_name)?;
-        match self.ser_mode {
-            SerialiserMode::BINCODE => Ok(T::new(tree)),
-        }
+        
+        Ok(T::new(tree))
     }
 }
 
