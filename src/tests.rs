@@ -14,7 +14,31 @@ mod bincode_tests {
 
         let bytes = vec![2, 3, 5, 7, 9, 11];
         tree.insert(b"w", &bytes).unwrap();
-        assert_eq!(tree.get(b"w").unwrap(), Some(bytes));
+        assert_eq!(tree.get(b"w").unwrap(), Some(bytes.clone()));
+
+        let same_tree = ser_db
+            .open_tree_impl("insert_and_get")
+            .expect("tree should open");
+
+        let other_bytes = vec![2, 3, 11];
+        assert_eq!(same_tree.insert(b"w", &other_bytes).unwrap(), Some(bytes));
+    }
+
+    #[test]
+    fn get_or_init() {
+        let db = sled::Config::new().temporary(true).open().unwrap();
+        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
+            .expect("db should open");
+        let tree = ser_db
+            .open_tree_impl("insert_and_get")
+            .expect("tree should open");
+
+        let other_bytes = vec![2, 3, 11];
+        assert_eq!(
+            tree.get_or_init(b"angel", || { other_bytes.clone() })
+                .unwrap(),
+            Some(other_bytes)
+        );
     }
 
     #[test]

@@ -127,7 +127,6 @@ impl SerSledTree for BincodeSledTree {
     ) -> impl Iterator<Item = (Vec<u8>, V)> {
         self.inner_tree
             .range(range)
-            .into_iter()
             .filter(|res| res.is_ok())
             .filter_map(|res| {
                 let (key_ivec, value_ivec) = res.expect("previous filter checked that res is Ok()");
@@ -194,5 +193,22 @@ impl SerSledTree for BincodeSledTree {
             }
             None => Ok(None),
         }
+    }
+
+    fn get_or_init<F: FnOnce() -> T, K: Serialize, T: Serialize + for<'wa> Deserialize<'wa>>(
+        &self,
+        key: K,
+        init_func: F,
+    ) -> Result<Option<T>, SerSledError> {
+        let res = match self.get(&key)? {
+            Some(v) => Some(v),
+            None => {
+                let value = init_func();
+                let _ = self.insert(&key, &value)?;
+                Some(value)
+            },
+        };
+
+        Ok(res)
     }
 }

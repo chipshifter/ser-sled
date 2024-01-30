@@ -102,6 +102,11 @@ pub trait SerSledTree {
         &self,
         key: &K,
     ) -> Result<Option<V>, SerSledError>;
+    fn get_or_init<F: FnOnce() -> T, K: Serialize, T: Serialize + for<'wa> Deserialize<'wa>>(
+        &self,
+        key: K,
+        init_func: F,
+    ) -> Result<Option<T>, SerSledError>;
     fn insert<K: Serialize, V: Serialize + for<'de> Deserialize<'de>>(
         &self,
         key: &K,
