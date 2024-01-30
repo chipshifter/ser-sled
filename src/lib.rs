@@ -114,6 +114,9 @@ pub trait SerSledTree {
     fn last<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
         &self,
     ) -> Result<Option<(K, V)>, SerSledError>;
+    fn pop_max<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
+        &self,
+    ) -> Result<Option<(K, V)>, SerSledError>;
     fn iter<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
         &self,
     ) -> impl Iterator<Item = (K, V)>;

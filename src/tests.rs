@@ -119,4 +119,58 @@ mod bincode_tests {
         assert_eq!(iter.next(), Some(([4u8], [4u8])));
         assert_eq!(iter.next(), None);
     }
+
+    #[test]
+    fn clear() {
+        let db = sled::Config::new().temporary(true).open().unwrap();
+        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
+            .expect("db should open");
+        let tree = ser_db
+            .open_tree_impl("is_binary_order_preserved")
+            .expect("tree should open");
+
+        tree.insert(&[1u8], &[1u8]).unwrap();
+        tree.insert(&[4u8], &[4u8]).unwrap();
+        tree.insert(&[3u8], &[3u8]).unwrap();
+        tree.insert(&[2u8], &[2u8]).unwrap();
+
+        tree.clear().unwrap();
+
+        assert!(tree.iter::<[u8; 1], [u8; 1]>().next().is_none());
+    }
+
+    #[test]
+    fn contains_key() {
+        let db = sled::Config::new().temporary(true).open().unwrap();
+        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
+            .expect("db should open");
+        let tree = ser_db
+            .open_tree_impl("is_binary_order_preserved")
+            .expect("tree should open");
+
+        tree.insert(&[1u8], &[1u8]).unwrap();
+        tree.insert(&[4u8], &[4u8]).unwrap();
+
+        assert!(tree.contains_key(&[1u8]).unwrap());
+        assert!(tree.contains_key(&[4u8]).unwrap());
+        assert!(!tree.contains_key(&[2u8]).unwrap());
+        assert!(!tree.contains_key(&[3u8]).unwrap());
+
+    }
+
+    #[test]
+    fn pop_max() {
+        let db = sled::Config::new().temporary(true).open().unwrap();
+        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
+            .expect("db should open");
+        let tree = ser_db
+            .open_tree_impl("is_binary_order_preserved")
+            .expect("tree should open");
+
+        tree.insert(&[1u8], &[1u8]).unwrap();
+        tree.insert(&[4u8], &[4u8]).unwrap();
+        tree.insert(&[2u8], &[2u8]).unwrap();
+
+        assert_eq!(tree.pop_max().unwrap(), Some(([4u8], [4u8])));
+    }
 }

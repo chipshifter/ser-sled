@@ -154,4 +154,23 @@ impl SerSledTree for BincodeSledTree {
 
         Ok(self.inner_tree.contains_key(key_bytes)?)
     }
+
+    fn pop_max<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
+        &self,
+    ) -> Result<Option<(K, V)>, SerSledError> {
+        match self.inner_tree.pop_max()? {
+            Some((key_ivec, value_ivec)) => {
+                let key =
+                    bincode::serde::decode_borrowed_from_slice::<K, _>(&key_ivec, BINCODE_CONFIG)?;
+
+                let value = bincode::serde::decode_borrowed_from_slice::<V, _>(
+                    &value_ivec,
+                    BINCODE_CONFIG,
+                )?;
+
+                Ok(Some((key, value)))
+            }
+            None => Ok(None),
+        }
+    }
 }
