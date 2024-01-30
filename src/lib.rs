@@ -31,7 +31,6 @@ pub enum SerialiserMode {
     BINCODE,
 }
 
-/// Convert the enum into "bytes" for inserting config into the sled tree.
 impl AsRef<[u8]> for SerialiserMode {
     fn as_ref(&self) -> &[u8] {
         match self {
