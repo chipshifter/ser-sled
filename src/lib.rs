@@ -127,4 +127,8 @@ pub trait SerSledTree {
     fn clear(&self) -> Result<(), SerSledError>;
     fn contains_key<K: Serialize>(&self, key: &K) -> Result<bool, SerSledError>;
     fn len(&self) -> usize;
+    fn remove<K: Serialize, V: for<'de> Deserialize<'de>>(
+        &self,
+        key: &K,
+    ) -> Result<Option<V>, SerSledError>;
 }

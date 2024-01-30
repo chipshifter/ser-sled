@@ -177,4 +177,21 @@ impl SerSledTree for BincodeSledTree {
     fn len(&self) -> usize {
         self.inner_tree.len()
     }
+
+    fn remove<K: Serialize, V: for<'de> Deserialize<'de>>(
+        &self,
+        key: &K,
+    ) -> Result<Option<V>, SerSledError> {
+        let bytes = bincode::serde::encode_to_vec(key, BINCODE_CONFIG)?;
+
+        match self.inner_tree.remove(bytes)? {
+            Some(res_ivec) => {
+                let deser =
+                    bincode::serde::decode_borrowed_from_slice::<V, _>(&res_ivec, BINCODE_CONFIG)?;
+
+                Ok(Some(deser))
+            }
+            None => Ok(None),
+        }
+    }
 }

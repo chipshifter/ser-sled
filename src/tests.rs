@@ -155,7 +155,6 @@ mod bincode_tests {
         assert!(tree.contains_key(&[4u8]).unwrap());
         assert!(!tree.contains_key(&[2u8]).unwrap());
         assert!(!tree.contains_key(&[3u8]).unwrap());
-
     }
 
     #[test]
@@ -172,5 +171,28 @@ mod bincode_tests {
         tree.insert(&[2u8], &[2u8]).unwrap();
 
         assert_eq!(tree.pop_max().unwrap(), Some(([4u8], [4u8])));
+    }
+
+    #[test]
+    fn remove() {
+        let db = sled::Config::new().temporary(true).open().unwrap();
+        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
+            .expect("db should open");
+        let tree = ser_db
+            .open_tree_impl("is_binary_order_preserved")
+            .expect("tree should open");
+
+        tree.insert(&[1u8], &[1u8]).unwrap();
+        tree.insert(&[4u8], &[4u8]).unwrap();
+        tree.insert(&[3u8], &[3u8]).unwrap();
+        tree.insert(&[2u8], &[2u8]).unwrap();
+
+        assert_eq!(tree.remove(&[3u8]).unwrap(), Some([3u8]));
+
+        let mut iter = tree.iter();
+        assert_eq!(iter.next(), Some(([1u8], [1u8])));
+        assert_eq!(iter.next(), Some(([2u8], [2u8])));
+        assert_eq!(iter.next(), Some(([4u8], [4u8])));
+        assert_eq!(iter.next(), None);
     }
 }
