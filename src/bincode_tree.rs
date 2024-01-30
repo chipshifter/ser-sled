@@ -144,4 +144,8 @@ impl SerSledTree for BincodeSledTree {
                 }
             })
     }
+
+    fn clear(&self) -> Result<(), SerSledError> {
+        Ok(self.inner_tree.clear()?)
+    }
 }

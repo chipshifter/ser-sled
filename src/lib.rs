@@ -121,4 +121,5 @@ pub trait SerSledTree {
         &self,
         range: R,
     ) -> impl Iterator<Item = (Vec<u8>, V)>;
+    fn clear(&self) -> Result<(), SerSledError>;
 }
