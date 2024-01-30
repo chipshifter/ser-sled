@@ -121,7 +121,7 @@ impl SerSledTree for BincodeSledTree {
             })
     }
 
-    fn range_key_bytes<'a, K: AsRef<[u8]>, R: RangeBounds<K>, V: for<'de> Deserialize<'de>>(
+    fn range_key_bytes<K: AsRef<[u8]>, R: RangeBounds<K>, V: for<'de> Deserialize<'de>>(
         &self,
         range: R,
     ) -> impl Iterator<Item = (Vec<u8>, V)> {
