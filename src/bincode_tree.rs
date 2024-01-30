@@ -148,4 +148,10 @@ impl SerSledTree for BincodeSledTree {
     fn clear(&self) -> Result<(), SerSledError> {
         Ok(self.inner_tree.clear()?)
     }
+
+    fn contains_key<K: Serialize>(&self, key: &K) -> Result<bool, SerSledError> {
+        let key_bytes = bincode::serde::encode_to_vec(key, BINCODE_CONFIG)?;
+
+        Ok(self.inner_tree.contains_key(key_bytes)?)
+    }
 }
