@@ -173,4 +173,8 @@ impl SerSledTree for BincodeSledTree {
             None => Ok(None),
         }
     }
+
+    fn len(&self) -> usize {
+        self.inner_tree.len()
+    }
 }

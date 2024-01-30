@@ -126,4 +126,5 @@ pub trait SerSledTree {
     ) -> impl Iterator<Item = (Vec<u8>, V)>;
     fn clear(&self) -> Result<(), SerSledError>;
     fn contains_key<K: Serialize>(&self, key: &K) -> Result<bool, SerSledError>;
+    fn len(&self) -> usize;
 }
