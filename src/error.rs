@@ -41,3 +41,17 @@ impl From<bincode::error::EncodeError> for SerSledError {
         )))
     }
 }
+
+impl From<SerSledError> for std::io::Error {
+    fn from(value: SerSledError) -> Self {
+        match value {
+            SerSledError::SledError(e) => e.into(),
+            SerSledError::SerialiserError(_) => {
+                std::io::Error::new::<SerSledError>(std::io::ErrorKind::InvalidData, value)
+            }
+            SerSledError::IllegalOperation => {
+                std::io::Error::new::<SerSledError>(std::io::ErrorKind::InvalidInput, value)
+            }
+        }
+    }
+}
