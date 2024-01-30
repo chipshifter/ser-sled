@@ -30,7 +30,7 @@ mod bincode_tests {
         let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
             .expect("db should open");
         let tree = ser_db
-            .open_tree_impl("insert_and_get")
+            .open_tree_impl("get_or_init")
             .expect("tree should open");
 
         let other_bytes = vec![2, 3, 11];
