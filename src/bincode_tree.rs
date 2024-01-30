@@ -206,7 +206,7 @@ impl SerSledTree for BincodeSledTree {
                 let value = init_func();
                 let _ = self.insert(&key, &value)?;
                 Some(value)
-            },
+            }
         };
 
         Ok(res)
