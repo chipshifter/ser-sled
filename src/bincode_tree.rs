@@ -1,6 +1,7 @@
 use std::ops::RangeBounds;
 
 use serde::{Deserialize, Serialize};
+use std::ops::Bound::{Excluded, Included, Unbounded};
 
 use crate::{error::SerSledError, SerSledTree};
 
@@ -206,5 +207,51 @@ impl SerSledTree for BincodeSledTree {
         };
 
         Ok(res)
+    }
+
+    fn range<
+        K: Serialize + for<'de> Deserialize<'de>,
+        R: RangeBounds<K>,
+        V: for<'de> Deserialize<'de>,
+    >(
+        &self,
+        range: R,
+    ) -> Result<impl DoubleEndedIterator<Item = (K, V)>, SerSledError> {
+        let start_bound_bytes = match range.start_bound() {
+            Included(r) => Included(bincode::serde::encode_to_vec(r, BINCODE_CONFIG)?),
+            Excluded(r) => Excluded(bincode::serde::encode_to_vec(r, BINCODE_CONFIG)?),
+            Unbounded => Unbounded,
+        };
+        let end_bound_bytes = match range.end_bound() {
+            Included(r) => Included(bincode::serde::encode_to_vec(r, BINCODE_CONFIG)?),
+            Excluded(r) => Excluded(bincode::serde::encode_to_vec(r, BINCODE_CONFIG)?),
+            Unbounded => Unbounded,
+        };
+
+        Ok(self
+            .inner_tree
+            .range((start_bound_bytes, end_bound_bytes))
+            .filter_map(|res| match res {
+                Ok((key_ivec, value_ivec)) => {
+                    let key = bincode::serde::decode_borrowed_from_slice::<K, _>(
+                        &key_ivec,
+                        BINCODE_CONFIG,
+                    )
+                    .ok();
+
+                    let value = bincode::serde::decode_borrowed_from_slice::<V, _>(
+                        &value_ivec,
+                        BINCODE_CONFIG,
+                    )
+                    .ok();
+
+                    if key.is_some() && value.is_some() {
+                        Some((key.expect("key is Some"), value.expect("value is Some")))
+                    } else {
+                        None
+                    }
+                }
+                Err(_) => None,
+            }))
     }
 }

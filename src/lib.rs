@@ -128,6 +128,14 @@ pub trait SerSledTree {
         &self,
         range: R,
     ) -> impl DoubleEndedIterator<Item = (Vec<u8>, V)>;
+    fn range<
+        K: Serialize + for<'de> Deserialize<'de>,
+        R: RangeBounds<K>,
+        V: for<'de> Deserialize<'de>,
+    >(
+        &self,
+        range: R,
+    ) -> Result<impl DoubleEndedIterator<Item = (K, V)>, SerSledError>;
     fn clear(&self) -> Result<(), SerSledError>;
     fn contains_key<K: Serialize>(&self, key: &K) -> Result<bool, SerSledError>;
     fn len(&self) -> usize;

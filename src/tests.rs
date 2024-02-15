@@ -128,6 +128,33 @@ mod bincode_tests {
     }
 
     #[test]
+    fn range() {
+        let db = sled::Config::new().temporary(true).open().unwrap();
+        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
+            .expect("db should open");
+        let tree = ser_db.open_tree_impl("range").expect("tree should open");
+
+        let bytes = vec![2, 3];
+        let bytes_2 = vec![3, 3];
+
+        tree.insert(&1u64, &bytes).unwrap();
+        tree.insert(&2u64, &bytes_2).unwrap();
+
+        let mut range = tree.range(..2u64).expect("key should encode");
+        assert_eq!(range.next(), Some((1u64, bytes.clone())));
+        assert_eq!(range.next(), None);
+
+        let mut range = tree.range(1u64..).expect("key should encode");
+        assert_eq!(range.next(), Some((1u64, bytes)));
+        assert_eq!(range.next(), Some((2u64, bytes_2.clone())));
+        assert_eq!(range.next(), None);
+
+        let mut range = tree.range(2u64..).expect("key should encode");
+        assert_eq!(range.next(), Some((2u64, bytes_2)));
+        assert_eq!(range.next(), None);
+    }
+
+    #[test]
     fn is_binary_order_preserved() {
         let db = sled::Config::new().temporary(true).open().unwrap();
         let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
