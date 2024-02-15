@@ -98,13 +98,9 @@ impl SerSledTree for BincodeSledTree {
 
     fn iter<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
         &self,
-    ) -> impl Iterator<Item = (K, V)> {
-        self.inner_tree
-            .into_iter()
-            .filter(|res| res.is_ok())
-            .filter_map(|res| {
-                let (key_ivec, value_ivec) = res.expect("previous filter checked that res is Ok()");
-
+    ) -> impl DoubleEndedIterator<Item = (K, V)> {
+        self.inner_tree.into_iter().filter_map(|res| match res {
+            Ok((key_ivec, value_ivec)) => {
                 let key =
                     bincode::serde::decode_borrowed_from_slice::<K, _>(&key_ivec, BINCODE_CONFIG)
                         .ok();
@@ -118,7 +114,9 @@ impl SerSledTree for BincodeSledTree {
                 } else {
                     None
                 }
-            })
+            }
+            Err(_) => None,
+        })
     }
 
     fn range_key_bytes<K: AsRef<[u8]>, R: RangeBounds<K>, V: for<'de> Deserialize<'de>>(

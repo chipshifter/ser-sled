@@ -123,7 +123,7 @@ pub trait SerSledTree {
     ) -> Result<Option<(K, V)>, SerSledError>;
     fn iter<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
         &self,
-    ) -> impl Iterator<Item = (K, V)>;
+    ) -> impl DoubleEndedIterator<Item = (K, V)>;
     fn range_key_bytes<K: AsRef<[u8]>, R: RangeBounds<K>, V: for<'de> Deserialize<'de>>(
         &self,
         range: R,

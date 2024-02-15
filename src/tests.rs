@@ -1,6 +1,8 @@
 #[cfg(feature = "bincode")]
 #[cfg(test)]
 mod bincode_tests {
+    use sled::IVec;
+
     use crate::{SerSledDb, SerSledTree};
 
     #[test]
@@ -63,8 +65,6 @@ mod bincode_tests {
     #[test]
     fn load_config() {
         use crate::CONFIGUATION_TREE_KEY;
-        use sled::IVec;
-
         let db = sled::Config::new().temporary(true).open().unwrap();
         let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
             .expect("db should open");
@@ -90,13 +90,18 @@ mod bincode_tests {
         tree.insert(&[2u8], &bytes_2).unwrap();
 
         let mut iter = tree.iter();
-        assert_eq!(iter.next(), Some(([1u8], bytes)));
+        assert_eq!(iter.next(), Some(([1u8], bytes.clone())));
+        assert_eq!(iter.next(), Some(([2u8], bytes_2.clone())));
+        assert_eq!(iter.next(), None);
+
+        let mut iter = tree.iter().rev();
         assert_eq!(iter.next(), Some(([2u8], bytes_2)));
+        assert_eq!(iter.next(), Some(([1u8], bytes)));
         assert_eq!(iter.next(), None);
     }
 
     #[test]
-    fn range() {
+    fn range_key_bytes() {
         let db = sled::Config::new().temporary(true).open().unwrap();
         let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
             .expect("db should open");
@@ -109,16 +114,16 @@ mod bincode_tests {
         tree.insert(&[2u8], &bytes_2).unwrap();
 
         let mut range = tree.range_key_bytes(..[2u8]);
-        assert_eq!(range.next(), Some((vec![1], bytes.clone())));
+        assert_eq!(range.next(), Some(([1u8].to_vec(), bytes.clone())));
         assert_eq!(range.next(), None);
 
         let mut range = tree.range_key_bytes([1u8]..);
-        assert_eq!(range.next(), Some((vec![1], bytes)));
-        assert_eq!(range.next(), Some((vec![2], bytes_2.clone())));
+        assert_eq!(range.next(), Some(([1u8].to_vec(), bytes)));
+        assert_eq!(range.next(), Some(([2u8].to_vec(), bytes_2.clone())));
         assert_eq!(range.next(), None);
 
         let mut range = tree.range_key_bytes([2u8]..);
-        assert_eq!(range.next(), Some((vec![2], bytes_2)));
+        assert_eq!(range.next(), Some(([2u8].to_vec(), bytes_2)));
         assert_eq!(range.next(), None);
     }
 
