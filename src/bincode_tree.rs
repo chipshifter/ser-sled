@@ -122,13 +122,9 @@ impl SerSledTree for BincodeSledTree {
     fn range_key_bytes<K: AsRef<[u8]>, R: RangeBounds<K>, V: for<'de> Deserialize<'de>>(
         &self,
         range: R,
-    ) -> impl Iterator<Item = (Vec<u8>, V)> {
-        self.inner_tree
-            .range(range)
-            .filter(|res| res.is_ok())
-            .filter_map(|res| {
-                let (key_ivec, value_ivec) = res.expect("previous filter checked that res is Ok()");
-
+    ) -> impl DoubleEndedIterator<Item = (Vec<u8>, V)> {
+        self.inner_tree.range(range).filter_map(|res| match res {
+            Ok((key_ivec, value_ivec)) => {
                 let key = key_ivec.to_vec();
 
                 let value =
@@ -140,7 +136,9 @@ impl SerSledTree for BincodeSledTree {
                 } else {
                     None
                 }
-            })
+            }
+            Err(_) => None,
+        })
     }
 
     fn clear(&self) -> Result<(), SerSledError> {
