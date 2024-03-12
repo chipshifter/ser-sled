@@ -1,3 +1,4 @@
+use bincode_tree::RelaxedBincodeTree;
 /// Copyright (C) 2024 Broward Apps
 ///
 /// This program is free software: you can redistribute it and/or modify
@@ -36,6 +37,16 @@ pub struct SerSledDb {
 
 impl SerSledDb {
     #[cfg(feature = "bincode")]
+    pub fn open_relaxed_bincode_tree(
+        &self,
+        tree_name: &str,
+    ) -> Result<RelaxedBincodeTree, SerSledError> {
+        let tree = self.inner_db.open_tree(tree_name)?;
+
+        Ok(RelaxedBincodeTree::new(tree))
+    }
+
+    #[cfg(feature = "bincode")]
     pub fn open_bincode_tree<
         K: Serialize + for<'de> Deserialize<'de>,
         V: Serialize + for<'de> Deserialize<'de>,
@@ -49,7 +60,7 @@ impl SerSledDb {
     }
 }
 
-/// A type strict sled tree structure. 
+/// A type strict sled tree structure.
 pub trait SerSledTree {
     type Key: Serialize + for<'de> Deserialize<'de>;
     type Value: Serialize + for<'de> Deserialize<'de>;
@@ -82,4 +93,53 @@ pub trait SerSledTree {
     fn contains_key(&self, key: &Self::Key) -> Result<bool, SerSledError>;
     fn len(&self) -> usize;
     fn remove(&self, key: &Self::Key) -> Result<Option<Self::Value>, SerSledError>;
+}
+
+pub trait RelaxedTree {
+    fn new(tree: sled::Tree) -> Self;
+    fn get<K: Serialize, V: for<'de> Deserialize<'de>>(
+        &self,
+        key: &K,
+    ) -> Result<Option<V>, SerSledError>;
+    fn get_or_init<F: FnOnce() -> T, K: Serialize, T: Serialize + for<'wa> Deserialize<'wa>>(
+        &self,
+        key: K,
+        init_func: F,
+    ) -> Result<Option<T>, SerSledError>;
+    fn insert<K: Serialize, V: Serialize + for<'de> Deserialize<'de>>(
+        &self,
+        key: &K,
+        value: &V,
+    ) -> Result<Option<V>, SerSledError>;
+    fn first<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
+        &self,
+    ) -> Result<Option<(K, V)>, SerSledError>;
+    fn last<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
+        &self,
+    ) -> Result<Option<(K, V)>, SerSledError>;
+    fn pop_max<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
+        &self,
+    ) -> Result<Option<(K, V)>, SerSledError>;
+    fn iter<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (K, V)>;
+    fn range_key_bytes<K: AsRef<[u8]>, R: RangeBounds<K>, V: for<'de> Deserialize<'de>>(
+        &self,
+        range: R,
+    ) -> impl DoubleEndedIterator<Item = (Vec<u8>, V)>;
+    fn range<
+        K: Serialize + for<'de> Deserialize<'de>,
+        R: RangeBounds<K>,
+        V: for<'de> Deserialize<'de>,
+    >(
+        &self,
+        range: R,
+    ) -> Result<impl DoubleEndedIterator<Item = (K, V)>, SerSledError>;
+    fn clear(&self) -> Result<(), SerSledError>;
+    fn contains_key<K: Serialize>(&self, key: &K) -> Result<bool, SerSledError>;
+    fn len(&self) -> usize;
+    fn remove<K: Serialize, V: for<'de> Deserialize<'de>>(
+        &self,
+        key: &K,
+    ) -> Result<Option<V>, SerSledError>;
 }
