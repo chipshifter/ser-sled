@@ -19,128 +19,67 @@ use std::ops::RangeBounds;
 #[cfg(feature = "bincode")]
 pub mod bincode_tree;
 #[cfg(feature = "bincode")]
-use bincode_tree::BincodeSledTree;
+use bincode_tree::BincodeTree;
 pub mod error;
 pub mod tests;
 
-pub const CONFIGUATION_TREE_KEY: &[u8] = b"_ser-sled_serialiser";
-
-#[derive(Debug, Clone, Copy)]
-pub enum SerialiserMode {
-    #[cfg(feature = "bincode")]
-    BINCODE,
-}
-
-impl AsRef<[u8]> for SerialiserMode {
-    fn as_ref(&self) -> &[u8] {
-        match self {
-            #[cfg(feature = "bincode")]
-            SerialiserMode::BINCODE => &[0u8],
-        }
+impl From<sled::Db> for SerSledDb {
+    fn from(value: sled::Db) -> Self {
+        Self { inner_db: value }
     }
 }
 
 #[derive(Clone)]
 pub struct SerSledDb {
     inner_db: sled::Db,
-    pub ser_mode: SerialiserMode,
 }
 
 impl SerSledDb {
-    /// Loads the tree and attempts to load the serialiser mode stored in the tree.
-    /// Otherwise, it will use `ser_mode` and store that in the tree configuration.
-    pub fn new_from_config_or_else(
-        sled_db: sled::Db,
-        ser_mode: SerialiserMode,
-    ) -> Result<Self, SerSledError> {
-        let ser_config = match sled_db.get(CONFIGUATION_TREE_KEY)? {
-            Some(bytes) => {
-                match bytes.first() {
-                    // Bincode config
-                    #[cfg(feature = "bincode")]
-                    Some(0) => SerialiserMode::BINCODE,
-                    // No readable config
-                    Some(_) | None => {
-                        let _insert_config =
-                            sled_db.insert(CONFIGUATION_TREE_KEY, ser_mode.as_ref())?;
-
-                        ser_mode
-                    }
-                }
-            }
-            None => {
-                // No config found
-                let _insert_config = sled_db.insert(CONFIGUATION_TREE_KEY, ser_mode.as_ref())?;
-
-                ser_mode
-            }
-        };
-
-        Ok(Self {
-            inner_db: sled_db,
-            ser_mode: ser_config,
-        })
-    }
-
-    pub fn open_tree_impl(&self, tree_name: &str) -> Result<impl SerSledTree, SerSledError> {
-        let tree = self.inner_db.open_tree(tree_name)?;
-        match self.ser_mode {
-            SerialiserMode::BINCODE => Ok(BincodeSledTree::new(tree)),
-        }
-    }
-
-    pub fn open_tree<T: SerSledTree>(&self, tree_name: &str) -> Result<T, SerSledError> {
+    #[cfg(feature = "bincode")]
+    pub fn open_bincode_tree<
+        K: Serialize + for<'de> Deserialize<'de>,
+        V: Serialize + for<'de> Deserialize<'de>,
+    >(
+        &self,
+        tree_name: &str,
+    ) -> Result<BincodeTree<K, V>, SerSledError> {
         let tree = self.inner_db.open_tree(tree_name)?;
 
-        Ok(T::new(tree))
+        Ok(BincodeTree::new(tree))
     }
 }
 
+/// A type strict sled tree structure. 
 pub trait SerSledTree {
+    type Key: Serialize + for<'de> Deserialize<'de>;
+    type Value: Serialize + for<'de> Deserialize<'de>;
+
     fn new(tree: sled::Tree) -> Self;
-    fn get<K: Serialize, V: for<'de> Deserialize<'de>>(
+    fn get(&self, key: &Self::Key) -> Result<Option<Self::Value>, SerSledError>;
+    fn get_or_init<F: FnOnce() -> Self::Value>(
         &self,
-        key: &K,
-    ) -> Result<Option<V>, SerSledError>;
-    fn get_or_init<F: FnOnce() -> T, K: Serialize, T: Serialize + for<'wa> Deserialize<'wa>>(
-        &self,
-        key: K,
+        key: Self::Key,
         init_func: F,
-    ) -> Result<Option<T>, SerSledError>;
-    fn insert<K: Serialize, V: Serialize + for<'de> Deserialize<'de>>(
+    ) -> Result<Option<Self::Value>, SerSledError>;
+    fn insert(
         &self,
-        key: &K,
-        value: &V,
-    ) -> Result<Option<V>, SerSledError>;
-    fn first<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
-        &self,
-    ) -> Result<Option<(K, V)>, SerSledError>;
-    fn last<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
-        &self,
-    ) -> Result<Option<(K, V)>, SerSledError>;
-    fn pop_max<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
-        &self,
-    ) -> Result<Option<(K, V)>, SerSledError>;
-    fn iter<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = (K, V)>;
-    fn range_key_bytes<K: AsRef<[u8]>, R: RangeBounds<K>, V: for<'de> Deserialize<'de>>(
+        key: &Self::Key,
+        value: &Self::Value,
+    ) -> Result<Option<Self::Value>, SerSledError>;
+    fn first(&self) -> Result<Option<(Self::Key, Self::Value)>, SerSledError>;
+    fn last(&self) -> Result<Option<(Self::Key, Self::Value)>, SerSledError>;
+    fn pop_max(&self) -> Result<Option<(Self::Key, Self::Value)>, SerSledError>;
+    fn iter(&self) -> impl DoubleEndedIterator<Item = (Self::Key, Self::Value)>;
+    fn range_key_bytes<K: AsRef<[u8]>, R: RangeBounds<K>>(
         &self,
         range: R,
-    ) -> impl DoubleEndedIterator<Item = (Vec<u8>, V)>;
-    fn range<
-        K: Serialize + for<'de> Deserialize<'de>,
-        R: RangeBounds<K>,
-        V: for<'de> Deserialize<'de>,
-    >(
+    ) -> impl DoubleEndedIterator<Item = (Vec<u8>, Self::Value)>;
+    fn range<R: RangeBounds<Self::Key>>(
         &self,
         range: R,
-    ) -> Result<impl DoubleEndedIterator<Item = (K, V)>, SerSledError>;
+    ) -> Result<impl DoubleEndedIterator<Item = (Self::Key, Self::Value)>, SerSledError>;
     fn clear(&self) -> Result<(), SerSledError>;
-    fn contains_key<K: Serialize>(&self, key: &K) -> Result<bool, SerSledError>;
+    fn contains_key(&self, key: &Self::Key) -> Result<bool, SerSledError>;
     fn len(&self) -> usize;
-    fn remove<K: Serialize, V: for<'de> Deserialize<'de>>(
-        &self,
-        key: &K,
-    ) -> Result<Option<V>, SerSledError>;
+    fn remove(&self, key: &Self::Key) -> Result<Option<Self::Value>, SerSledError>;
 }

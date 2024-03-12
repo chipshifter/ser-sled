@@ -1,9 +1,9 @@
 [package]
 name = "ser-sled"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Broward Apps"]
 edition = "2021"
-description = "A basic wrapper to use Serialize/Deserialize structs inside Sled using bincode"
+description = "A basic wrapper to use Serialize/Deserialize structs inside Sled (using bincode)"
 repository = "https://github.com/Broward-Apps/ser-sled"
 license = "GPL-3.0"
 

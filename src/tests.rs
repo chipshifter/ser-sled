@@ -1,43 +1,42 @@
 #[cfg(feature = "bincode")]
 #[cfg(test)]
 mod bincode_tests {
-    use sled::IVec;
-
     use crate::{SerSledDb, SerSledTree};
 
     #[test]
     fn insert_and_get() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
-            .expect("db should open");
+        let ser_db: SerSledDb = db.into();
         let tree = ser_db
-            .open_tree_impl("insert_and_get")
+            .open_bincode_tree::<Vec<u8>, Vec<u8>>("insert_and_get")
             .expect("tree should open");
 
         let bytes = vec![2, 3, 5, 7, 9, 11];
-        tree.insert(b"w", &bytes).unwrap();
-        assert_eq!(tree.get(b"w").unwrap(), Some(bytes.clone()));
+        tree.insert(&vec![1], &bytes).unwrap();
+        assert_eq!(tree.get(&vec![1]).unwrap(), Some(bytes.clone()));
 
         let same_tree = ser_db
-            .open_tree_impl("insert_and_get")
+            .open_bincode_tree::<Vec<u8>, Vec<u8>>("insert_and_get")
             .expect("tree should open");
 
         let other_bytes = vec![2, 3, 11];
-        assert_eq!(same_tree.insert(b"w", &other_bytes).unwrap(), Some(bytes));
+        assert_eq!(
+            same_tree.insert(&vec![1], &other_bytes).unwrap(),
+            Some(bytes)
+        );
     }
 
     #[test]
     fn get_or_init() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
-            .expect("db should open");
+        let ser_db: SerSledDb = db.into();
         let tree = ser_db
-            .open_tree_impl("get_or_init")
+            .open_bincode_tree::<Vec<u8>, Vec<u8>>("get_or_init")
             .expect("tree should open");
 
         let other_bytes = vec![2, 3, 11];
         assert_eq!(
-            tree.get_or_init(b"angel", || { other_bytes.clone() })
+            tree.get_or_init(b"angel".to_vec(), || { other_bytes.clone() })
                 .unwrap(),
             Some(other_bytes)
         );
@@ -46,10 +45,9 @@ mod bincode_tests {
     #[test]
     fn first_and_last() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
-            .expect("db should open");
+        let ser_db: SerSledDb = db.into();
         let tree = ser_db
-            .open_tree_impl("first_and_last")
+            .open_bincode_tree::<[u8; 1], Vec<u8>>("first_and_last")
             .expect("tree should open");
 
         let bytes = vec![2, 3];
@@ -63,25 +61,12 @@ mod bincode_tests {
     }
 
     #[test]
-    fn load_config() {
-        use crate::CONFIGUATION_TREE_KEY;
-        let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
-            .expect("db should open");
-
-        // Is config properly stored?
-        assert_eq!(
-            ser_db.inner_db.get(CONFIGUATION_TREE_KEY).unwrap(),
-            Some(IVec::from(&[0]))
-        );
-    }
-
-    #[test]
     fn iter() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
-            .expect("db should open");
-        let tree = ser_db.open_tree_impl("iter").expect("tree should open");
+        let ser_db: SerSledDb = db.into();
+        let tree = ser_db
+            .open_bincode_tree::<[u8; 1], Vec<u8>>("iter")
+            .expect("tree should open");
 
         let bytes = vec![2, 3];
         let bytes_2 = vec![3, 3];
@@ -103,9 +88,11 @@ mod bincode_tests {
     #[test]
     fn range_key_bytes() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
-            .expect("db should open");
-        let tree = ser_db.open_tree_impl("range").expect("tree should open");
+
+        let ser_db: SerSledDb = db.into();
+        let tree = ser_db
+            .open_bincode_tree::<[u8; 1], Vec<u8>>("range")
+            .expect("tree should open");
 
         let bytes = vec![2, 3];
         let bytes_2 = vec![3, 3];
@@ -130,9 +117,10 @@ mod bincode_tests {
     #[test]
     fn range() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
-            .expect("db should open");
-        let tree = ser_db.open_tree_impl("range").expect("tree should open");
+        let ser_db: SerSledDb = db.into();
+        let tree = ser_db
+            .open_bincode_tree::<u64, Vec<u8>>("range")
+            .expect("tree should open");
 
         let bytes = vec![2, 3];
         let bytes_2 = vec![3, 3];
@@ -157,10 +145,10 @@ mod bincode_tests {
     #[test]
     fn is_binary_order_preserved() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
-            .expect("db should open");
+
+        let ser_db: SerSledDb = db.into();
         let tree = ser_db
-            .open_tree_impl("is_binary_order_preserved")
+            .open_bincode_tree::<[u8; 1], [u8; 1]>("binary_order")
             .expect("tree should open");
 
         tree.insert(&[1u8], &[1u8]).unwrap();
@@ -179,29 +167,25 @@ mod bincode_tests {
     #[test]
     fn clear() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
-            .expect("db should open");
+        let ser_db: SerSledDb = db.into();
         let tree = ser_db
-            .open_tree_impl("is_binary_order_preserved")
+            .open_bincode_tree::<[u8; 1], [u8; 1]>("clear")
             .expect("tree should open");
 
         tree.insert(&[1u8], &[1u8]).unwrap();
-        tree.insert(&[4u8], &[4u8]).unwrap();
-        tree.insert(&[3u8], &[3u8]).unwrap();
-        tree.insert(&[2u8], &[2u8]).unwrap();
 
         tree.clear().unwrap();
 
-        assert!(tree.iter::<[u8; 1], [u8; 1]>().next().is_none());
+        assert!(tree.iter().next().is_none());
     }
 
     #[test]
     fn contains_key() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
-            .expect("db should open");
+
+        let ser_db: SerSledDb = db.into();
         let tree = ser_db
-            .open_tree_impl("is_binary_order_preserved")
+            .open_bincode_tree::<[u8; 1], [u8; 1]>("contains_key")
             .expect("tree should open");
 
         tree.insert(&[1u8], &[1u8]).unwrap();
@@ -216,10 +200,9 @@ mod bincode_tests {
     #[test]
     fn pop_max() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
-            .expect("db should open");
+        let ser_db: SerSledDb = db.into();
         let tree = ser_db
-            .open_tree_impl("is_binary_order_preserved")
+            .open_bincode_tree::<[u8; 1], [u8; 1]>("pop_max")
             .expect("tree should open");
 
         tree.insert(&[1u8], &[1u8]).unwrap();
@@ -232,10 +215,9 @@ mod bincode_tests {
     #[test]
     fn remove() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db = SerSledDb::new_from_config_or_else(db, crate::SerialiserMode::BINCODE)
-            .expect("db should open");
+        let ser_db: SerSledDb = db.into();
         let tree = ser_db
-            .open_tree_impl("is_binary_order_preserved")
+            .open_bincode_tree::<[u8; 1], [u8; 1]>("remove")
             .expect("tree should open");
 
         tree.insert(&[1u8], &[1u8]).unwrap();
