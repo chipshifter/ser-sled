@@ -3,7 +3,7 @@ use std::{marker::PhantomData, ops::RangeBounds};
 use serde::{Deserialize, Serialize};
 use std::ops::Bound::{Excluded, Included, Unbounded};
 
-use crate::{error::SerSledError, RelaxedTree, SerSledTree};
+use crate::{error::Error, RelaxedTree, StrictTree};
 
 /// Sled is optimised to work with big-endian bytes
 pub const BINCODE_CONFIG: bincode::config::Configuration<bincode::config::BigEndian> =
@@ -19,7 +19,7 @@ pub struct RelaxedBincodeTree {
 }
 
 /// Type strict bincode tree.
-/// It wraps around the relaxed tree, but with our type strict trait.
+/// It is a wrapper of RelaxedBincodeTree, but with a type-strict property.
 /// It is recommended to use this instead of [`RelaxedBincodeTree`] if
 /// you don't plan on mixing different types in the same database tree.
 /// While this should prevent type errors, it is only a best effort:
@@ -46,7 +46,7 @@ impl RelaxedTree for RelaxedBincodeTree {
     fn get<K: Serialize, V: for<'de> Deserialize<'de>>(
         &self,
         key: &K,
-    ) -> Result<Option<V>, SerSledError> {
+    ) -> Result<Option<V>, Error> {
         let bytes = bincode::serde::encode_to_vec(key, BINCODE_CONFIG)?;
 
         match self.inner_tree.get(bytes)? {
@@ -65,7 +65,7 @@ impl RelaxedTree for RelaxedBincodeTree {
         &self,
         key: &K,
         value: &V,
-    ) -> Result<Option<V>, SerSledError> {
+    ) -> Result<Option<V>, Error> {
         let key_bytes = bincode::serde::encode_to_vec(key, BINCODE_CONFIG)?;
         let value_bytes = bincode::serde::encode_to_vec(value, BINCODE_CONFIG)?;
 
@@ -82,7 +82,7 @@ impl RelaxedTree for RelaxedBincodeTree {
 
     fn first<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
         &self,
-    ) -> Result<Option<(K, V)>, SerSledError> {
+    ) -> Result<Option<(K, V)>, Error> {
         match self.inner_tree.first()? {
             Some((key_ivec, value_ivec)) => {
                 let key =
@@ -101,7 +101,7 @@ impl RelaxedTree for RelaxedBincodeTree {
 
     fn last<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
         &self,
-    ) -> Result<Option<(K, V)>, SerSledError> {
+    ) -> Result<Option<(K, V)>, Error> {
         match self.inner_tree.last()? {
             Some((key_ivec, value_ivec)) => {
                 let key =
@@ -163,11 +163,11 @@ impl RelaxedTree for RelaxedBincodeTree {
         })
     }
 
-    fn clear(&self) -> Result<(), SerSledError> {
+    fn clear(&self) -> Result<(), Error> {
         Ok(self.inner_tree.clear()?)
     }
 
-    fn contains_key<K: Serialize>(&self, key: &K) -> Result<bool, SerSledError> {
+    fn contains_key<K: Serialize>(&self, key: &K) -> Result<bool, Error> {
         let key_bytes = bincode::serde::encode_to_vec(key, BINCODE_CONFIG)?;
 
         Ok(self.inner_tree.contains_key(key_bytes)?)
@@ -175,7 +175,7 @@ impl RelaxedTree for RelaxedBincodeTree {
 
     fn pop_max<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
         &self,
-    ) -> Result<Option<(K, V)>, SerSledError> {
+    ) -> Result<Option<(K, V)>, Error> {
         match self.inner_tree.pop_max()? {
             Some((key_ivec, value_ivec)) => {
                 let key =
@@ -199,7 +199,7 @@ impl RelaxedTree for RelaxedBincodeTree {
     fn remove<K: Serialize, V: for<'de> Deserialize<'de>>(
         &self,
         key: &K,
-    ) -> Result<Option<V>, SerSledError> {
+    ) -> Result<Option<V>, Error> {
         let bytes = bincode::serde::encode_to_vec(key, BINCODE_CONFIG)?;
 
         match self.inner_tree.remove(bytes)? {
@@ -217,7 +217,7 @@ impl RelaxedTree for RelaxedBincodeTree {
         &self,
         key: K,
         init_func: F,
-    ) -> Result<Option<T>, SerSledError> {
+    ) -> Result<Option<T>, Error> {
         let res = match self.get(&key)? {
             Some(v) => Some(v),
             None => {
@@ -237,7 +237,7 @@ impl RelaxedTree for RelaxedBincodeTree {
     >(
         &self,
         range: R,
-    ) -> Result<impl DoubleEndedIterator<Item = (K, V)>, SerSledError> {
+    ) -> Result<impl DoubleEndedIterator<Item = (K, V)>, Error> {
         let start_bound_bytes = match range.start_bound() {
             Included(r) => Included(bincode::serde::encode_to_vec(r, BINCODE_CONFIG)?),
             Excluded(r) => Excluded(bincode::serde::encode_to_vec(r, BINCODE_CONFIG)?),
@@ -277,7 +277,7 @@ impl RelaxedTree for RelaxedBincodeTree {
     }
 }
 
-impl<K, V> SerSledTree for BincodeTree<K, V>
+impl<K, V> StrictTree for BincodeTree<K, V>
 where
     K: Serialize + for<'de> Deserialize<'de>,
     V: Serialize + for<'de> Deserialize<'de>,
@@ -293,7 +293,7 @@ where
         }
     }
 
-    fn get(&self, key: &Self::Key) -> Result<Option<Self::Value>, SerSledError> {
+    fn get(&self, key: &Self::Key) -> Result<Option<Self::Value>, Error> {
         self.inner_tree.get(key)
     }
 
@@ -301,7 +301,7 @@ where
         &self,
         key: Self::Key,
         init_func: F,
-    ) -> Result<Option<Self::Value>, SerSledError> {
+    ) -> Result<Option<Self::Value>, Error> {
         self.inner_tree.get_or_init(key, init_func)
     }
 
@@ -309,19 +309,19 @@ where
         &self,
         key: &Self::Key,
         value: &Self::Value,
-    ) -> Result<Option<Self::Value>, SerSledError> {
+    ) -> Result<Option<Self::Value>, Error> {
         self.inner_tree.insert(key, value)
     }
 
-    fn first(&self) -> Result<Option<(Self::Key, Self::Value)>, SerSledError> {
+    fn first(&self) -> Result<Option<(Self::Key, Self::Value)>, Error> {
         self.inner_tree.first()
     }
 
-    fn last(&self) -> Result<Option<(Self::Key, Self::Value)>, SerSledError> {
+    fn last(&self) -> Result<Option<(Self::Key, Self::Value)>, Error> {
         self.inner_tree.last()
     }
 
-    fn pop_max(&self) -> Result<Option<(Self::Key, Self::Value)>, SerSledError> {
+    fn pop_max(&self) -> Result<Option<(Self::Key, Self::Value)>, Error> {
         self.inner_tree.pop_max()
     }
 
@@ -339,15 +339,15 @@ where
     fn range<R: RangeBounds<Self::Key>>(
         &self,
         range: R,
-    ) -> Result<impl DoubleEndedIterator<Item = (Self::Key, Self::Value)>, SerSledError> {
+    ) -> Result<impl DoubleEndedIterator<Item = (Self::Key, Self::Value)>, Error> {
         self.inner_tree.range(range)
     }
 
-    fn clear(&self) -> Result<(), SerSledError> {
+    fn clear(&self) -> Result<(), Error> {
         self.inner_tree.clear()
     }
 
-    fn contains_key(&self, key: &Self::Key) -> Result<bool, SerSledError> {
+    fn contains_key(&self, key: &Self::Key) -> Result<bool, Error> {
         self.inner_tree.contains_key(key)
     }
 
@@ -355,7 +355,7 @@ where
         self.inner_tree.len()
     }
 
-    fn remove(&self, key: &Self::Key) -> Result<Option<Self::Value>, SerSledError> {
+    fn remove(&self, key: &Self::Key) -> Result<Option<Self::Value>, Error> {
         self.inner_tree.remove(key)
     }
 }

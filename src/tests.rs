@@ -1,12 +1,12 @@
 #[cfg(feature = "bincode")]
 #[cfg(test)]
 mod relaxed_bincode_tests {
-    use crate::{RelaxedTree, SerSledDb};
+    use crate::{RelaxedTree, Db};
 
     #[test]
     fn insert_and_get() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_relaxed_bincode_tree("insert_and_get")
             .expect("tree should open");
@@ -26,7 +26,7 @@ mod relaxed_bincode_tests {
     #[test]
     fn get_or_init() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_relaxed_bincode_tree("get_or_init")
             .expect("tree should open");
@@ -42,7 +42,7 @@ mod relaxed_bincode_tests {
     #[test]
     fn first_and_last() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_relaxed_bincode_tree("first_and_last")
             .expect("tree should open");
@@ -60,7 +60,7 @@ mod relaxed_bincode_tests {
     #[test]
     fn iter() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_relaxed_bincode_tree("iter")
             .expect("tree should open");
@@ -86,7 +86,7 @@ mod relaxed_bincode_tests {
     fn range_key_bytes() {
         let db = sled::Config::new().temporary(true).open().unwrap();
 
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_relaxed_bincode_tree("range")
             .expect("tree should open");
@@ -114,7 +114,7 @@ mod relaxed_bincode_tests {
     #[test]
     fn range() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_relaxed_bincode_tree("range")
             .expect("tree should open");
@@ -143,7 +143,7 @@ mod relaxed_bincode_tests {
     fn is_binary_order_preserved() {
         let db = sled::Config::new().temporary(true).open().unwrap();
 
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_relaxed_bincode_tree("binary_order")
             .expect("tree should open");
@@ -164,7 +164,7 @@ mod relaxed_bincode_tests {
     #[test]
     fn clear() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_relaxed_bincode_tree("clear")
             .expect("tree should open");
@@ -180,7 +180,7 @@ mod relaxed_bincode_tests {
     fn contains_key() {
         let db = sled::Config::new().temporary(true).open().unwrap();
 
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_relaxed_bincode_tree("contains_key")
             .expect("tree should open");
@@ -197,7 +197,7 @@ mod relaxed_bincode_tests {
     #[test]
     fn pop_max() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_relaxed_bincode_tree("pop_max")
             .expect("tree should open");
@@ -212,7 +212,7 @@ mod relaxed_bincode_tests {
     #[test]
     fn remove() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_relaxed_bincode_tree("remove")
             .expect("tree should open");
@@ -235,12 +235,12 @@ mod relaxed_bincode_tests {
 #[cfg(feature = "bincode")]
 #[cfg(test)]
 mod strict_bincode_tests {
-    use crate::{SerSledDb, SerSledTree};
+    use crate::{Db, StrictTree};
 
     #[test]
     fn insert_and_get() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_bincode_tree::<Vec<u8>, Vec<u8>>("insert_and_get")
             .expect("tree should open");
@@ -263,7 +263,7 @@ mod strict_bincode_tests {
     #[test]
     fn get_or_init() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_bincode_tree::<Vec<u8>, Vec<u8>>("get_or_init")
             .expect("tree should open");
@@ -279,7 +279,7 @@ mod strict_bincode_tests {
     #[test]
     fn first_and_last() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_bincode_tree::<[u8; 1], Vec<u8>>("first_and_last")
             .expect("tree should open");
@@ -297,7 +297,7 @@ mod strict_bincode_tests {
     #[test]
     fn iter() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_bincode_tree::<[u8; 1], Vec<u8>>("iter")
             .expect("tree should open");
@@ -323,7 +323,7 @@ mod strict_bincode_tests {
     fn range_key_bytes() {
         let db = sled::Config::new().temporary(true).open().unwrap();
 
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_bincode_tree::<[u8; 1], Vec<u8>>("range")
             .expect("tree should open");
@@ -351,7 +351,7 @@ mod strict_bincode_tests {
     #[test]
     fn range() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_bincode_tree::<u64, Vec<u8>>("range")
             .expect("tree should open");
@@ -380,7 +380,7 @@ mod strict_bincode_tests {
     fn is_binary_order_preserved() {
         let db = sled::Config::new().temporary(true).open().unwrap();
 
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_bincode_tree::<[u8; 1], [u8; 1]>("binary_order")
             .expect("tree should open");
@@ -401,7 +401,7 @@ mod strict_bincode_tests {
     #[test]
     fn clear() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_bincode_tree::<[u8; 1], [u8; 1]>("clear")
             .expect("tree should open");
@@ -417,7 +417,7 @@ mod strict_bincode_tests {
     fn contains_key() {
         let db = sled::Config::new().temporary(true).open().unwrap();
 
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_bincode_tree::<[u8; 1], [u8; 1]>("contains_key")
             .expect("tree should open");
@@ -434,7 +434,7 @@ mod strict_bincode_tests {
     #[test]
     fn pop_max() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_bincode_tree::<[u8; 1], [u8; 1]>("pop_max")
             .expect("tree should open");
@@ -449,7 +449,7 @@ mod strict_bincode_tests {
     #[test]
     fn remove() {
         let db = sled::Config::new().temporary(true).open().unwrap();
-        let ser_db: SerSledDb = db.into();
+        let ser_db: Db = db.into();
         let tree = ser_db
             .open_bincode_tree::<[u8; 1], [u8; 1]>("remove")
             .expect("tree should open");

@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum SerSledError {
+pub enum Error {
     #[error("Sled error")]
     SledError(#[from] sled::Error),
     #[error("Serialiser error")]
@@ -12,8 +12,7 @@ pub enum SerSledError {
 
 #[derive(Error, Debug)]
 pub enum SerialiserError {
-    #[cfg(feature = "bincode")]
-    #[error("Bincode error")]
+    #[cfg_attr(feature = "bincode", error("Bincode error"))]
     BincodeError(#[from] BincodeError),
 }
 
@@ -26,7 +25,8 @@ pub enum BincodeError {
     DecodeError(#[from] bincode::error::DecodeError),
 }
 
-impl From<bincode::error::DecodeError> for SerSledError {
+#[cfg(feature = "bincode")]
+impl From<bincode::error::DecodeError> for Error {
     fn from(value: bincode::error::DecodeError) -> Self {
         Self::SerialiserError(SerialiserError::BincodeError(BincodeError::DecodeError(
             value,
@@ -34,7 +34,8 @@ impl From<bincode::error::DecodeError> for SerSledError {
     }
 }
 
-impl From<bincode::error::EncodeError> for SerSledError {
+#[cfg(feature = "bincode")]
+impl From<bincode::error::EncodeError> for Error {
     fn from(value: bincode::error::EncodeError) -> Self {
         Self::SerialiserError(SerialiserError::BincodeError(BincodeError::EncodeError(
             value,
@@ -42,15 +43,15 @@ impl From<bincode::error::EncodeError> for SerSledError {
     }
 }
 
-impl From<SerSledError> for std::io::Error {
-    fn from(value: SerSledError) -> Self {
+impl From<Error> for std::io::Error {
+    fn from(value: Error) -> Self {
         match value {
-            SerSledError::SledError(e) => e.into(),
-            SerSledError::SerialiserError(_) => {
-                std::io::Error::new::<SerSledError>(std::io::ErrorKind::InvalidData, value)
+            Error::SledError(e) => e.into(),
+            Error::SerialiserError(_) => {
+                std::io::Error::new::<Error>(std::io::ErrorKind::InvalidData, value)
             }
-            SerSledError::IllegalOperation => {
-                std::io::Error::new::<SerSledError>(std::io::ErrorKind::InvalidInput, value)
+            Error::IllegalOperation => {
+                std::io::Error::new::<Error>(std::io::ErrorKind::InvalidInput, value)
             }
         }
     }
