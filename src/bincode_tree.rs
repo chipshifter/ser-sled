@@ -6,6 +6,7 @@ use std::ops::Bound::{Excluded, Included, Unbounded};
 use crate::{error::Error, RelaxedTree, StrictTree};
 
 /// Sled is optimised to work with big-endian bytes
+/// See <https://github.com/spacejam/sled?tab=readme-ov-file#a-note-on-lexicographic-ordering-and-endianness>
 pub const BINCODE_CONFIG: bincode::config::Configuration<bincode::config::BigEndian> =
     bincode::config::standard().with_big_endian();
 
