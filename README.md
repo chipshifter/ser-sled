@@ -49,33 +49,33 @@ assert_eq!(tree.get(&1)?, value);
 
 This crate has an API similar to `sled` but does not implement everything as of yet.
 
-- [] `apply_batch`
-- [] `checksum`
+- [ ] `apply_batch`
+- [ ] `checksum`
 - [x] `clear`
-- [] `compare_and_swap`
+- [ ] `compare_and_swap`
 - [x] `contains_key`
-- [] `fetch_and_update`
+- [ ] `fetch_and_update`
 - [x] `first`
-- [] `flush`
-- [] `flush_async`
+- [ ] `flush`
+- [ ] `flush_async`
 - [x] `get`
-- [] `get_gt`
-- [] `get_lt`
+- [ ] `get_gt`
+- [ ] `get_lt`
 - [x] `insert`
-- [] `is_empty`
+- [ ] `is_empty`
 - [x] `iter`
 - [x] `last`
 - [x] `len`
-- [] `merge`
-- [] `name`
+- [ ] `merge`
+- [ ] `name`
 - [x] `pop_max`
-- [] `pop_min`
+- [ ] `pop_min`
 - [x] `range`
 - [x] `remove`
-- [] `scan_prefix`
-- [] `transaction`
-- [] `update_and_fetch`
-- [] `watch_prefix`
+- [ ] `scan_prefix`
+- [ ] `transaction`
+- [ ] `update_and_fetch`
+- [ ] `watch_prefix`
 
 #### Extra things
 
