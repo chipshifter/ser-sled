@@ -1,6 +1,6 @@
 use std::{marker::PhantomData, ops::RangeBounds};
 
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::ops::Bound::{Excluded, Included, Unbounded};
 
 use crate::{error::Error, RelaxedTree, StrictTree};
@@ -28,8 +28,8 @@ pub struct RelaxedBincodeTree {
 /// that the things stored in the tree are of the type you expect.
 #[derive(Clone)]
 pub struct BincodeTree<
-    K: Serialize + for<'de> Deserialize<'de>,
-    V: Serialize + for<'de> Deserialize<'de>,
+    K: Serialize + DeserializeOwned,
+    V: Serialize + DeserializeOwned,
 > {
     inner_tree: RelaxedBincodeTree,
     key_type: PhantomData<K>,
@@ -44,7 +44,7 @@ impl RelaxedTree for RelaxedBincodeTree {
     }
 
     /// Retrieve value from table.
-    fn get<K: Serialize, V: for<'de> Deserialize<'de>>(
+    fn get<K: Serialize, V: DeserializeOwned>(
         &self,
         key: &K,
     ) -> Result<Option<V>, Error> {
@@ -62,7 +62,7 @@ impl RelaxedTree for RelaxedBincodeTree {
     }
 
     /// Insert value into table.
-    fn insert<K: Serialize, V: Serialize + for<'de> Deserialize<'de>>(
+    fn insert<K: Serialize, V: Serialize + DeserializeOwned>(
         &self,
         key: &K,
         value: &V,
@@ -81,7 +81,7 @@ impl RelaxedTree for RelaxedBincodeTree {
         }
     }
 
-    fn first<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
+    fn first<K: DeserializeOwned, V: DeserializeOwned>(
         &self,
     ) -> Result<Option<(K, V)>, Error> {
         match self.inner_tree.first()? {
@@ -100,7 +100,7 @@ impl RelaxedTree for RelaxedBincodeTree {
         }
     }
 
-    fn last<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
+    fn last<K: DeserializeOwned, V: DeserializeOwned>(
         &self,
     ) -> Result<Option<(K, V)>, Error> {
         match self.inner_tree.last()? {
@@ -119,7 +119,7 @@ impl RelaxedTree for RelaxedBincodeTree {
         }
     }
 
-    fn iter<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
+    fn iter<K: DeserializeOwned, V: DeserializeOwned>(
         &self,
     ) -> impl DoubleEndedIterator<Item = (K, V)> {
         self.inner_tree.into_iter().filter_map(|res| match res {
@@ -142,7 +142,7 @@ impl RelaxedTree for RelaxedBincodeTree {
         })
     }
 
-    fn range_key_bytes<K: AsRef<[u8]>, R: RangeBounds<K>, V: for<'de> Deserialize<'de>>(
+    fn range_key_bytes<K: AsRef<[u8]>, R: RangeBounds<K>, V: DeserializeOwned>(
         &self,
         range: R,
     ) -> impl DoubleEndedIterator<Item = (Vec<u8>, V)> {
@@ -174,7 +174,7 @@ impl RelaxedTree for RelaxedBincodeTree {
         Ok(self.inner_tree.contains_key(key_bytes)?)
     }
 
-    fn pop_max<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
+    fn pop_max<K: DeserializeOwned, V: DeserializeOwned>(
         &self,
     ) -> Result<Option<(K, V)>, Error> {
         match self.inner_tree.pop_max()? {
@@ -197,7 +197,7 @@ impl RelaxedTree for RelaxedBincodeTree {
         self.inner_tree.len()
     }
 
-    fn remove<K: Serialize, V: for<'de> Deserialize<'de>>(
+    fn remove<K: Serialize, V: DeserializeOwned>(
         &self,
         key: &K,
     ) -> Result<Option<V>, Error> {
@@ -232,9 +232,9 @@ impl RelaxedTree for RelaxedBincodeTree {
     }
 
     fn range<
-        K: Serialize + for<'de> Deserialize<'de>,
+        K: Serialize + DeserializeOwned,
         R: RangeBounds<K>,
-        V: for<'de> Deserialize<'de>,
+        V: DeserializeOwned,
     >(
         &self,
         range: R,
@@ -280,8 +280,8 @@ impl RelaxedTree for RelaxedBincodeTree {
 
 impl<K, V> StrictTree for BincodeTree<K, V>
 where
-    K: Serialize + for<'de> Deserialize<'de>,
-    V: Serialize + for<'de> Deserialize<'de>,
+    K: Serialize + DeserializeOwned,
+    V: Serialize + DeserializeOwned,
 {
     type Key = K;
     type Value = V;

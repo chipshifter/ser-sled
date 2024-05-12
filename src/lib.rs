@@ -14,7 +14,7 @@ use bincode_tree::RelaxedBincodeTree;
 /// You should have received a copy of the GNU General Public License
 /// along with this program.  If not, see <https://www.gnu.org/licenses/>.
 use error::Error;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::ops::RangeBounds;
 
 #[cfg(feature = "bincode")]
@@ -48,8 +48,8 @@ impl Db {
 
     #[cfg(feature = "bincode")]
     pub fn open_bincode_tree<
-        K: Serialize + for<'de> Deserialize<'de>,
-        V: Serialize + for<'de> Deserialize<'de>,
+        K: Serialize + DeserializeOwned,
+        V: Serialize + DeserializeOwned,
     >(
         &self,
         tree_name: &str,
@@ -62,8 +62,8 @@ impl Db {
 
 /// A type strict sled tree structure.
 pub trait StrictTree {
-    type Key: Serialize + for<'de> Deserialize<'de>;
-    type Value: Serialize + for<'de> Deserialize<'de>;
+    type Key: Serialize + DeserializeOwned;
+    type Value: Serialize + DeserializeOwned;
 
     fn new(tree: sled::Tree) -> Self;
     fn get(&self, key: &Self::Key) -> Result<Option<Self::Value>, Error>;
@@ -97,7 +97,7 @@ pub trait StrictTree {
 
 pub trait RelaxedTree {
     fn new(tree: sled::Tree) -> Self;
-    fn get<K: Serialize, V: for<'de> Deserialize<'de>>(
+    fn get<K: Serialize, V: DeserializeOwned>(
         &self,
         key: &K,
     ) -> Result<Option<V>, Error>;
@@ -106,31 +106,31 @@ pub trait RelaxedTree {
         key: K,
         init_func: F,
     ) -> Result<Option<T>, Error>;
-    fn insert<K: Serialize, V: Serialize + for<'de> Deserialize<'de>>(
+    fn insert<K: Serialize, V: Serialize + DeserializeOwned>(
         &self,
         key: &K,
         value: &V,
     ) -> Result<Option<V>, Error>;
-    fn first<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
+    fn first<K: DeserializeOwned, V: DeserializeOwned>(
         &self,
     ) -> Result<Option<(K, V)>, Error>;
-    fn last<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
+    fn last<K: DeserializeOwned, V: DeserializeOwned>(
         &self,
     ) -> Result<Option<(K, V)>, Error>;
-    fn pop_max<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
+    fn pop_max<K: DeserializeOwned, V: DeserializeOwned>(
         &self,
     ) -> Result<Option<(K, V)>, Error>;
-    fn iter<K: for<'de> Deserialize<'de>, V: for<'de> Deserialize<'de>>(
+    fn iter<K: DeserializeOwned, V: DeserializeOwned>(
         &self,
     ) -> impl DoubleEndedIterator<Item = (K, V)>;
-    fn range_key_bytes<K: AsRef<[u8]>, R: RangeBounds<K>, V: for<'de> Deserialize<'de>>(
+    fn range_key_bytes<K: AsRef<[u8]>, R: RangeBounds<K>, V: DeserializeOwned>(
         &self,
         range: R,
     ) -> impl DoubleEndedIterator<Item = (Vec<u8>, V)>;
     fn range<
-        K: Serialize + for<'de> Deserialize<'de>,
+        K: Serialize + DeserializeOwned,
         R: RangeBounds<K>,
-        V: for<'de> Deserialize<'de>,
+        V: DeserializeOwned,
     >(
         &self,
         range: R,
@@ -138,7 +138,7 @@ pub trait RelaxedTree {
     fn clear(&self) -> Result<(), Error>;
     fn contains_key<K: Serialize>(&self, key: &K) -> Result<bool, Error>;
     fn len(&self) -> usize;
-    fn remove<K: Serialize, V: for<'de> Deserialize<'de>>(
+    fn remove<K: Serialize, V: DeserializeOwned>(
         &self,
         key: &K,
     ) -> Result<Option<V>, Error>;
