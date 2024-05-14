@@ -1,33 +1,33 @@
-use std::{marker::PhantomData, ops::RangeBounds};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::ops::Bound::{Excluded, Included, Unbounded};
+use std::{marker::PhantomData, ops::RangeBounds};
 
 use crate::{error::Error, RelaxedSerdeTree, StrictTree, BINCODE_CONFIG};
 
-/// A tree that allows you to pass any key or value as long as they
-/// are serialisable and deserialisable.
-/// This is NOT type strict, and as such can fail if you expect a different
-/// structure than what is actually in the database. [`BincodeTree`] is recommended instead.
+/// A wrapper around a `sled::Tree` for types implementing `serde::Serialize` and/or `serde::Deserialize`.
+/// This allows you to work with ANY type as long as they implement them, so you can have deserialisation
+/// issues if the type you are expecting isn't the one that is actually used.
+/// For this reason [`BincodeTree`] is recommended instead.
 #[derive(Clone)]
-pub struct RelaxedBincodeSerdeTree {
+pub struct RelaxedTree {
     inner_tree: sled::Tree,
 }
 
-/// Type strict bincode tree.
-/// It is a wrapper of RelaxedBincodeTree, but with a type-strict property.
-/// It is recommended to use this instead of [`RelaxedBincodeTree`] if
+/// Type strict tree for types implementing `serde::Serialize` _and_ `serde::Deserialize`.
+/// It is a wrapper of RelaxedBincodeSerdeTree, but with a type-strict property.
+/// It is recommended to use this instead of [`RelaxedBincodeSerdeTree`] if
 /// you don't plan on mixing different types in the same database tree.
 /// While this should prevent type errors, it is only a best effort:
 /// [`sled`] stores everything as bytes, and therefore it is never a guarantee
 /// that the things stored in the tree are of the type you expect.
 #[derive(Clone)]
-pub struct BincodeSerdeTree<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> {
-    inner_tree: RelaxedBincodeSerdeTree,
+pub struct SerdeTree<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> {
+    inner_tree: RelaxedTree,
     key_type: PhantomData<K>,
     value_type: PhantomData<V>,
 }
 
-impl RelaxedSerdeTree for RelaxedBincodeSerdeTree {
+impl RelaxedSerdeTree for RelaxedTree {
     fn new(sled_tree: sled::Tree) -> Self {
         Self {
             inner_tree: sled_tree,
@@ -253,14 +253,14 @@ impl RelaxedSerdeTree for RelaxedBincodeSerdeTree {
     }
 }
 
-impl<KeyItem, ValueItem> StrictTree<KeyItem, ValueItem> for BincodeSerdeTree<KeyItem, ValueItem>
+impl<KeyItem, ValueItem> StrictTree<KeyItem, ValueItem> for SerdeTree<KeyItem, ValueItem>
 where
     KeyItem: Serialize + DeserializeOwned,
     ValueItem: Serialize + DeserializeOwned,
 {
     fn new(tree: sled::Tree) -> Self {
         Self {
-            inner_tree: RelaxedBincodeSerdeTree::new(tree),
+            inner_tree: RelaxedTree::new(tree),
             key_type: PhantomData,
             value_type: PhantomData,
         }

@@ -3,25 +3,33 @@
 *WARNING*: This crate is still a work-in-progress and its API is not complete or stabilised.
 
 `sled` is a key-value store which has an API similar to `BTreeMap<[u8], [u8]>`.
-This means that if you want to work with serializable objects, you have to convert
-them into bytes yourself.
+This means that if you want to work with it, you have to convert everything into bytes yourself.
 
-`ser-sled` is a basic wrapper around `sled` that aims to add an easy API which
-does all this work for you. Serialization into bytes is done using `bincode`.
+`ser-sled` is a wrapper that aims to solve that problem, using the `bincode` serializer.
+You can use this crate with `serde` to use `sled` with objects implementing `serde::Serialize`/`serde::Deserialize`.
+It is also possible to not use `serde` and instead use `bincode::Encode`/`bincode::Decode`.
 
-The structs must both derive `Serialize` and `Deserialize` for them to be used with
-this crate.
 
-There are two types of trees you can use:
+There are four types of trees you can use:
 
-- `StrictTree<K, V>`: The type-strict tree. If you know your tree will only contain 
-specific types (`K` as the key, `V` as the value) and shouldn't contain anything else, then you should use this.
-- `RelaxedTree`: The not-type-stript tree. You can store any type that you want. Typically,
-you will have to specify that type you're trying to `get` or `insert` in the code.
+### With `serde`:
+- `serde_tree::SerdeTree<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned>`
+- `serde_tree::RelaxedTree`
 
-Note that in both cases you cannot guarantee that the bytes stored in the database will result
-in proper serialization/deserialization, and nothing prevents the user from having two instances of `StrictTree`
-on the same tree but with different types.
+### With `bincode`:
+- `bincode_tree::BincodeTree<K: Encode + Decode, V: Encode + Decode>`
+- `bincode_tree::RelaxedTree`
+
+## Difference between "relaxed" tree and regular tree
+
+You cannot guarantee that the bytes stored in the database will result in proper serialization/deserialization. It is possible that for instance a `u64` was stored in the database tree at some point, but that you're attempting to deserialize it as a `String`.
+
+While "relaxed" trees allow you to use any type you want with `get`, `insert`, etc., we also provide wrapper around the relaxed tree to enforce one type for the key, and one type for the value.
+
+For instance, `SerdeTree<u64, String>` will only allow you to use `u64` as keys and `String` as values. Note that this is only a best effort attempt at type strictness: nothing prevents you from having two different instances of `SerdeTree` pointing to the same tree in the database itself. But this type strictness helps simplify the API and ensure that you're not accidentally serialising/deserializing an incorrect type.
+
+The types are defined when creating the table. Both the key and the value must implement serializing AND deserializing.
+
 
 ## Example
 
@@ -33,11 +41,11 @@ let ser_db: ser_sled::Db = db.into();
 
 // Open "strict" tree
 let tree = ser_db   // <key type, value type>
-    .open_bincode_tree::<u16, Vec<u8>>("example")?;
+    .open_serde_tree::<u16, Vec<u8>>("example")?;
 
 // Or open "relaxed" tree
 let tree = ser_db
-    .open_relaxed_bincode_tree("example")?;
+    .open_relaxed_serde_tree("example")?;
 
 // Either way, the API is the exact same:
 let value = vec![2, 3, 5, 7, 9, 11];

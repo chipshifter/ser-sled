@@ -2,19 +2,19 @@ use bincode::{Decode, Encode};
 use std::ops::Bound::{Excluded, Included, Unbounded};
 use std::{marker::PhantomData, ops::RangeBounds};
 
-use crate::BINCODE_CONFIG;
-use crate::{error::Error, RelaxedBincodeTree, StrictTree};
+use crate::{error::Error, StrictTree};
+use crate::{RelaxedBincodeTree, BINCODE_CONFIG};
 
-/// A tree that allows you to pass any key or value as long as they
-/// are serialisable and deserialisable.
-/// This is NOT type strict, and as such can fail if you expect a different
-/// structure than what is actually in the database. [`BincodeTree`] is recommended instead.
+/// A wrapper around a `sled::Tree` for types implementing `bincode::Decode` and/or `bincode::Encode`.
+/// This allows you to work with ANY type as long as they implement them, so you can have deserialisation
+/// issues if the type you are expecting isn't the one that is actually used.
+/// For this reason [`BincodeTree`] is recommended instead.
 #[derive(Clone)]
 pub struct RelaxedTree {
     inner_tree: sled::Tree,
 }
 
-/// Type strict bincode tree.
+/// Type strict tree for types implementing `bincode::Decode` _and_ `bincode::Encode`.
 /// It is a wrapper of RelaxedBincodeTree, but with a type-strict property.
 /// It is recommended to use this instead of [`RelaxedBincodeTree`] if
 /// you don't plan on mixing different types in the same database tree.
@@ -238,7 +238,7 @@ where
 {
     fn new(tree: sled::Tree) -> Self {
         Self {
-            inner_tree: RelaxedBincodeTree::new(tree),
+            inner_tree: RelaxedTree::new(tree),
             key_type: PhantomData,
             value_type: PhantomData,
         }

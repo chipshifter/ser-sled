@@ -17,8 +17,6 @@ use bincode::{Decode, Encode};
 use bincode_tree::{BincodeTree, RelaxedTree};
 #[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Serialize};
-#[cfg(feature = "serde")]
-use serde_tree::RelaxedBincodeSerdeTree;
 
 /// Sled is optimised to work with big-endian bytes
 /// See <https://github.com/spacejam/sled?tab=readme-ov-file#a-note-on-lexicographic-ordering-and-endianness>
@@ -31,8 +29,6 @@ use std::ops::RangeBounds;
 pub mod bincode_tree;
 #[cfg(feature = "serde")]
 pub mod serde_tree;
-#[cfg(feature = "serde")]
-use serde_tree::BincodeSerdeTree;
 pub mod error;
 pub mod tests;
 
@@ -88,20 +84,20 @@ impl Db {
     pub fn open_relaxed_serde_tree(
         &self,
         tree_name: &str,
-    ) -> Result<RelaxedBincodeSerdeTree, Error> {
+    ) -> Result<serde_tree::RelaxedTree, Error> {
         let tree = self.inner_db.open_tree(tree_name)?;
 
-        Ok(RelaxedBincodeSerdeTree::new(tree))
+        Ok(serde_tree::RelaxedTree::new(tree))
     }
 
     #[cfg(feature = "serde")]
     pub fn open_serde_tree<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned>(
         &self,
         tree_name: &str,
-    ) -> Result<BincodeSerdeTree<K, V>, Error> {
+    ) -> Result<serde_tree::SerdeTree<K, V>, Error> {
         let tree = self.inner_db.open_tree(tree_name)?;
 
-        Ok(BincodeSerdeTree::new(tree))
+        Ok(serde_tree::SerdeTree::new(tree))
     }
 }
 
