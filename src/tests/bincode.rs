@@ -1,7 +1,6 @@
-#[cfg(feature = "bincode")]
 #[cfg(test)]
-mod relaxed_bincode_tests {
-    use crate::{RelaxedTree, Db};
+mod relaxed_serde_tests {
+    use crate::{Db, RelaxedBincodeTree};
 
     #[test]
     fn insert_and_get() {
@@ -232,9 +231,8 @@ mod relaxed_bincode_tests {
     }
 }
 
-#[cfg(feature = "bincode")]
 #[cfg(test)]
-mod strict_bincode_tests {
+mod strict_serde_tests {
     use crate::{Db, StrictTree};
 
     #[test]

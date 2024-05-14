@@ -1,6 +1,6 @@
 [package]
 name = "ser-sled"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["chipshifter"]
 edition = "2021"
 description = "A basic wrapper to use Serialize/Deserialize structs inside Sled (using bincode)"
@@ -10,12 +10,11 @@ license = "GPL-3.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = "1"
 sled = "0.34.7"
 thiserror = "1"
-
-bincode = { version = "2.0.0-rc.3", features = ["serde"], optional = true }
+bincode = { version = "2.0.0-rc.3", features = ["serde"] }
+serde = { version = "1", optional = true }
 
 [features]
-default = ["bincode"]
-bincode = ["dep:bincode"]
+default = ["serde"]
+serde = ["dep:serde"]

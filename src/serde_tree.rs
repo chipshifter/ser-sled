@@ -1,8 +1,8 @@
-use bincode::{Decode, Encode};
-use std::ops::Bound::{Excluded, Included, Unbounded};
 use std::{marker::PhantomData, ops::RangeBounds};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use std::ops::Bound::{Excluded, Included, Unbounded};
 
-use crate::{error::Error, RelaxedBincodeTree, StrictTree};
+use crate::{error::Error, RelaxedSerdeTree, StrictTree};
 
 /// Sled is optimised to work with big-endian bytes
 /// See <https://github.com/spacejam/sled?tab=readme-ov-file#a-note-on-lexicographic-ordering-and-endianness>
@@ -14,7 +14,7 @@ pub const BINCODE_CONFIG: bincode::config::Configuration<bincode::config::BigEnd
 /// This is NOT type strict, and as such can fail if you expect a different
 /// structure than what is actually in the database. [`BincodeTree`] is recommended instead.
 #[derive(Clone)]
-pub struct RelaxedTree {
+pub struct RelaxedBincodeSerdeTree {
     inner_tree: sled::Tree,
 }
 
@@ -26,13 +26,13 @@ pub struct RelaxedTree {
 /// [`sled`] stores everything as bytes, and therefore it is never a guarantee
 /// that the things stored in the tree are of the type you expect.
 #[derive(Clone)]
-pub struct BincodeTree<K: Encode + Decode, V: Encode + Decode> {
-    inner_tree: RelaxedTree,
+pub struct BincodeSerdeTree<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned> {
+    inner_tree: RelaxedBincodeSerdeTree,
     key_type: PhantomData<K>,
     value_type: PhantomData<V>,
 }
 
-impl RelaxedBincodeTree for RelaxedTree {
+impl RelaxedSerdeTree for RelaxedBincodeSerdeTree {
     fn new(sled_tree: sled::Tree) -> Self {
         Self {
             inner_tree: sled_tree,
@@ -40,12 +40,13 @@ impl RelaxedBincodeTree for RelaxedTree {
     }
 
     /// Retrieve value from table.
-    fn get<K: Encode, V: Decode>(&self, key: &K) -> Result<Option<V>, Error> {
-        let bytes = bincode::encode_to_vec(key, BINCODE_CONFIG)?;
+    fn get<K: Serialize, V: DeserializeOwned>(&self, key: &K) -> Result<Option<V>, Error> {
+        let bytes = bincode::serde::encode_to_vec(key, BINCODE_CONFIG)?;
 
         match self.inner_tree.get(bytes)? {
             Some(res_ivec) => {
-                let (deser, _size) = bincode::decode_from_slice::<V, _>(&res_ivec, BINCODE_CONFIG)?;
+                let deser =
+                    bincode::serde::decode_borrowed_from_slice::<V, _>(&res_ivec, BINCODE_CONFIG)?;
 
                 Ok(Some(deser))
             }
@@ -54,17 +55,18 @@ impl RelaxedBincodeTree for RelaxedTree {
     }
 
     /// Insert value into table.
-    fn insert<K: Encode, V: Encode + Decode>(
+    fn insert<K: Serialize, V: Serialize + DeserializeOwned>(
         &self,
         key: &K,
         value: &V,
     ) -> Result<Option<V>, Error> {
-        let key_bytes = bincode::encode_to_vec(key, BINCODE_CONFIG)?;
-        let value_bytes = bincode::encode_to_vec(value, BINCODE_CONFIG)?;
+        let key_bytes = bincode::serde::encode_to_vec(key, BINCODE_CONFIG)?;
+        let value_bytes = bincode::serde::encode_to_vec(value, BINCODE_CONFIG)?;
 
         match self.inner_tree.insert(key_bytes, value_bytes)? {
             Some(ivec) => {
-                let (old_value, _size) = bincode::decode_from_slice::<V, _>(&ivec, BINCODE_CONFIG)?;
+                let old_value =
+                    bincode::serde::decode_borrowed_from_slice::<V, _>(&ivec, BINCODE_CONFIG)?;
 
                 Ok(Some(old_value))
             }
@@ -72,13 +74,16 @@ impl RelaxedBincodeTree for RelaxedTree {
         }
     }
 
-    fn first<K: Decode, V: Decode>(&self) -> Result<Option<(K, V)>, Error> {
+    fn first<K: DeserializeOwned, V: DeserializeOwned>(&self) -> Result<Option<(K, V)>, Error> {
         match self.inner_tree.first()? {
             Some((key_ivec, value_ivec)) => {
-                let (key, _size) = bincode::decode_from_slice::<K, _>(&key_ivec, BINCODE_CONFIG)?;
+                let key =
+                    bincode::serde::decode_borrowed_from_slice::<K, _>(&key_ivec, BINCODE_CONFIG)?;
 
-                let (value, _size) =
-                    bincode::decode_from_slice::<V, _>(&value_ivec, BINCODE_CONFIG)?;
+                let value = bincode::serde::decode_borrowed_from_slice::<V, _>(
+                    &value_ivec,
+                    BINCODE_CONFIG,
+                )?;
 
                 Ok(Some((key, value)))
             }
@@ -86,13 +91,16 @@ impl RelaxedBincodeTree for RelaxedTree {
         }
     }
 
-    fn last<K: Decode, V: Decode>(&self) -> Result<Option<(K, V)>, Error> {
+    fn last<K: DeserializeOwned, V: DeserializeOwned>(&self) -> Result<Option<(K, V)>, Error> {
         match self.inner_tree.last()? {
             Some((key_ivec, value_ivec)) => {
-                let (key, _size) = bincode::decode_from_slice::<K, _>(&key_ivec, BINCODE_CONFIG)?;
+                let key =
+                    bincode::serde::decode_borrowed_from_slice::<K, _>(&key_ivec, BINCODE_CONFIG)?;
 
-                let (value, _size) =
-                    bincode::decode_from_slice::<V, _>(&value_ivec, BINCODE_CONFIG)?;
+                let value = bincode::serde::decode_borrowed_from_slice::<V, _>(
+                    &value_ivec,
+                    BINCODE_CONFIG,
+                )?;
 
                 Ok(Some((key, value)))
             }
@@ -100,26 +108,30 @@ impl RelaxedBincodeTree for RelaxedTree {
         }
     }
 
-    fn iter<K: Decode, V: Decode>(&self) -> impl DoubleEndedIterator<Item = (K, V)> {
+    fn iter<K: DeserializeOwned, V: DeserializeOwned>(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (K, V)> {
         self.inner_tree.into_iter().filter_map(|res| match res {
             Ok((key_ivec, value_ivec)) => {
-                let key = bincode::decode_from_slice::<K, _>(&key_ivec, BINCODE_CONFIG).ok();
+                let key =
+                    bincode::serde::decode_borrowed_from_slice::<K, _>(&key_ivec, BINCODE_CONFIG)
+                        .ok();
 
-                let value = bincode::decode_from_slice::<V, _>(&value_ivec, BINCODE_CONFIG).ok();
+                let value =
+                    bincode::serde::decode_borrowed_from_slice::<V, _>(&value_ivec, BINCODE_CONFIG)
+                        .ok();
 
-                if let Some((key, _size)) = key {
-                    if let Some((value, _size)) = value {
-                        return Some((key, value));
-                    }
+                if key.is_some() && value.is_some() {
+                    Some((key.expect("key is Some"), value.expect("value is Some")))
+                } else {
+                    None
                 }
-
-                return None;
             }
             Err(_) => None,
         })
     }
 
-    fn range_key_bytes<K: AsRef<[u8]>, R: RangeBounds<K>, V: Decode>(
+    fn range_key_bytes<K: AsRef<[u8]>, R: RangeBounds<K>, V: DeserializeOwned>(
         &self,
         range: R,
     ) -> impl DoubleEndedIterator<Item = (Vec<u8>, V)> {
@@ -127,10 +139,12 @@ impl RelaxedBincodeTree for RelaxedTree {
             Ok((key_ivec, value_ivec)) => {
                 let key = key_ivec.to_vec();
 
-                let value = bincode::decode_from_slice::<V, _>(&value_ivec, BINCODE_CONFIG).ok();
+                let value =
+                    bincode::serde::decode_borrowed_from_slice::<V, _>(&value_ivec, BINCODE_CONFIG)
+                        .ok();
 
-                if let Some((value, _)) = value {
-                    Some((key, value))
+                if value.is_some() {
+                    Some((key, value.expect("value is Some")))
                 } else {
                     None
                 }
@@ -143,19 +157,22 @@ impl RelaxedBincodeTree for RelaxedTree {
         Ok(self.inner_tree.clear()?)
     }
 
-    fn contains_key<K: Encode>(&self, key: &K) -> Result<bool, Error> {
-        let key_bytes = bincode::encode_to_vec(key, BINCODE_CONFIG)?;
+    fn contains_key<K: Serialize>(&self, key: &K) -> Result<bool, Error> {
+        let key_bytes = bincode::serde::encode_to_vec(key, BINCODE_CONFIG)?;
 
         Ok(self.inner_tree.contains_key(key_bytes)?)
     }
 
-    fn pop_max<K: Decode, V: Decode>(&self) -> Result<Option<(K, V)>, Error> {
+    fn pop_max<K: DeserializeOwned, V: DeserializeOwned>(&self) -> Result<Option<(K, V)>, Error> {
         match self.inner_tree.pop_max()? {
             Some((key_ivec, value_ivec)) => {
-                let (key, _size) = bincode::decode_from_slice::<K, _>(&key_ivec, BINCODE_CONFIG)?;
+                let key =
+                    bincode::serde::decode_borrowed_from_slice::<K, _>(&key_ivec, BINCODE_CONFIG)?;
 
-                let (value, _size) =
-                    bincode::decode_from_slice::<V, _>(&value_ivec, BINCODE_CONFIG)?;
+                let value = bincode::serde::decode_borrowed_from_slice::<V, _>(
+                    &value_ivec,
+                    BINCODE_CONFIG,
+                )?;
 
                 Ok(Some((key, value)))
             }
@@ -167,12 +184,13 @@ impl RelaxedBincodeTree for RelaxedTree {
         self.inner_tree.len()
     }
 
-    fn remove<K: Encode, V: Decode>(&self, key: &K) -> Result<Option<V>, Error> {
-        let bytes = bincode::encode_to_vec(key, BINCODE_CONFIG)?;
+    fn remove<K: Serialize, V: DeserializeOwned>(&self, key: &K) -> Result<Option<V>, Error> {
+        let bytes = bincode::serde::encode_to_vec(key, BINCODE_CONFIG)?;
 
         match self.inner_tree.remove(bytes)? {
             Some(res_ivec) => {
-                let (deser, _size) = bincode::decode_from_slice::<V, _>(&res_ivec, BINCODE_CONFIG)?;
+                let deser =
+                    bincode::serde::decode_borrowed_from_slice::<V, _>(&res_ivec, BINCODE_CONFIG)?;
 
                 Ok(Some(deser))
             }
@@ -180,7 +198,7 @@ impl RelaxedBincodeTree for RelaxedTree {
         }
     }
 
-    fn get_or_init<F: FnOnce() -> T, K: Encode, T: Encode + Decode>(
+    fn get_or_init<F: FnOnce() -> T, K: Serialize, T: Serialize + for<'wa> Deserialize<'wa>>(
         &self,
         key: K,
         init_func: F,
@@ -197,18 +215,18 @@ impl RelaxedBincodeTree for RelaxedTree {
         Ok(res)
     }
 
-    fn range<K: Encode + Decode, R: RangeBounds<K>, V: Decode>(
+    fn range<K: Serialize + DeserializeOwned, R: RangeBounds<K>, V: DeserializeOwned>(
         &self,
         range: R,
     ) -> Result<impl DoubleEndedIterator<Item = (K, V)>, Error> {
         let start_bound_bytes = match range.start_bound() {
-            Included(r) => Included(bincode::encode_to_vec(r, BINCODE_CONFIG)?),
-            Excluded(r) => Excluded(bincode::encode_to_vec(r, BINCODE_CONFIG)?),
+            Included(r) => Included(bincode::serde::encode_to_vec(r, BINCODE_CONFIG)?),
+            Excluded(r) => Excluded(bincode::serde::encode_to_vec(r, BINCODE_CONFIG)?),
             Unbounded => Unbounded,
         };
         let end_bound_bytes = match range.end_bound() {
-            Included(r) => Included(bincode::encode_to_vec(r, BINCODE_CONFIG)?),
-            Excluded(r) => Excluded(bincode::encode_to_vec(r, BINCODE_CONFIG)?),
+            Included(r) => Included(bincode::serde::encode_to_vec(r, BINCODE_CONFIG)?),
+            Excluded(r) => Excluded(bincode::serde::encode_to_vec(r, BINCODE_CONFIG)?),
             Unbounded => Unbounded,
         };
 
@@ -217,32 +235,37 @@ impl RelaxedBincodeTree for RelaxedTree {
             .range((start_bound_bytes, end_bound_bytes))
             .filter_map(|res| match res {
                 Ok((key_ivec, value_ivec)) => {
-                    let key = bincode::decode_from_slice::<K, _>(&key_ivec, BINCODE_CONFIG).ok();
+                    let key = bincode::serde::decode_borrowed_from_slice::<K, _>(
+                        &key_ivec,
+                        BINCODE_CONFIG,
+                    )
+                    .ok();
 
-                    let value =
-                        bincode::decode_from_slice::<V, _>(&value_ivec, BINCODE_CONFIG).ok();
+                    let value = bincode::serde::decode_borrowed_from_slice::<V, _>(
+                        &value_ivec,
+                        BINCODE_CONFIG,
+                    )
+                    .ok();
 
-                    if let Some((key, _size)) = key {
-                        if let Some((value, _size)) = value {
-                            return Some((key, value));
-                        }
+                    if key.is_some() && value.is_some() {
+                        Some((key.expect("key is Some"), value.expect("value is Some")))
+                    } else {
+                        None
                     }
-
-                    return None;
                 }
                 Err(_) => None,
             }))
     }
 }
 
-impl<KeyItem, ValueItem> StrictTree<KeyItem, ValueItem> for BincodeTree<KeyItem, ValueItem>
+impl<KeyItem, ValueItem> StrictTree<KeyItem, ValueItem> for BincodeSerdeTree<KeyItem, ValueItem>
 where
-    KeyItem: Encode + Decode,
-    ValueItem: Encode + Decode,
+    KeyItem: Serialize + DeserializeOwned,
+    ValueItem: Serialize + DeserializeOwned,
 {
     fn new(tree: sled::Tree) -> Self {
         Self {
-            inner_tree: RelaxedBincodeTree::new(tree),
+            inner_tree: RelaxedBincodeSerdeTree::new(tree),
             key_type: PhantomData,
             value_type: PhantomData,
         }
