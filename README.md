@@ -1,4 +1,4 @@
-# ser-sled: A `sled` database wrapper for `Serialize`/`Deserialize` objects
+# `ser-sled`: `sled` + `bincode`/`serde` = Easy to use KV store
 
 *WARNING*: This crate is still a work-in-progress and its API is not complete or stabilised.
 
