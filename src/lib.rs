@@ -1,4 +1,3 @@
-use bincode_tree::{BincodeTree, RelaxedTree};
 /// Copyright (C) 2024 Chipshifter
 ///
 /// This program is free software: you can redistribute it and/or modify
@@ -15,10 +14,16 @@ use bincode_tree::{BincodeTree, RelaxedTree};
 /// along with this program.  If not, see <https://www.gnu.org/licenses/>.
 use error::Error;
 use bincode::{Decode, Encode};
+use bincode_tree::{BincodeTree, RelaxedTree};
 #[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Serialize};
 #[cfg(feature = "serde")]
-use serde_tree::{RelaxedBincodeSerdeTree, BINCODE_CONFIG};
+use serde_tree::RelaxedBincodeSerdeTree;
+
+/// Sled is optimised to work with big-endian bytes
+/// See <https://github.com/spacejam/sled?tab=readme-ov-file#a-note-on-lexicographic-ordering-and-endianness>
+pub const BINCODE_CONFIG: bincode::config::Configuration<bincode::config::BigEndian> =
+    bincode::config::standard().with_big_endian();
 
 use sled::IVec;
 use std::ops::RangeBounds;
@@ -80,7 +85,10 @@ impl Db {
     }
 
     #[cfg(feature = "serde")]
-    pub fn open_relaxed_serde_tree(&self, tree_name: &str) -> Result<RelaxedBincodeSerdeTree, Error> {
+    pub fn open_relaxed_serde_tree(
+        &self,
+        tree_name: &str,
+    ) -> Result<RelaxedBincodeSerdeTree, Error> {
         let tree = self.inner_db.open_tree(tree_name)?;
 
         Ok(RelaxedBincodeSerdeTree::new(tree))
@@ -131,10 +139,7 @@ pub trait StrictTree<Key, Value> {
 #[cfg(feature = "serde")]
 pub trait RelaxedSerdeTree {
     fn new(tree: sled::Tree) -> Self;
-    fn get<K: Serialize, V: DeserializeOwned>(
-        &self,
-        key: &K,
-    ) -> Result<Option<V>, Error>;
+    fn get<K: Serialize, V: DeserializeOwned>(&self, key: &K) -> Result<Option<V>, Error>;
     fn get_or_init<F: FnOnce() -> T, K: Serialize, T: Serialize + DeserializeOwned>(
         &self,
         key: K,
@@ -145,15 +150,9 @@ pub trait RelaxedSerdeTree {
         key: &K,
         value: &V,
     ) -> Result<Option<V>, Error>;
-    fn first<K: DeserializeOwned, V: DeserializeOwned>(
-        &self,
-    ) -> Result<Option<(K, V)>, Error>;
-    fn last<K: DeserializeOwned, V: DeserializeOwned>(
-        &self,
-    ) -> Result<Option<(K, V)>, Error>;
-    fn pop_max<K: DeserializeOwned, V: DeserializeOwned>(
-        &self,
-    ) -> Result<Option<(K, V)>, Error>;
+    fn first<K: DeserializeOwned, V: DeserializeOwned>(&self) -> Result<Option<(K, V)>, Error>;
+    fn last<K: DeserializeOwned, V: DeserializeOwned>(&self) -> Result<Option<(K, V)>, Error>;
+    fn pop_max<K: DeserializeOwned, V: DeserializeOwned>(&self) -> Result<Option<(K, V)>, Error>;
     fn iter<K: DeserializeOwned, V: DeserializeOwned>(
         &self,
     ) -> impl DoubleEndedIterator<Item = (K, V)>;
@@ -161,21 +160,14 @@ pub trait RelaxedSerdeTree {
         &self,
         range: R,
     ) -> impl DoubleEndedIterator<Item = (Vec<u8>, V)>;
-    fn range<
-        K: Serialize + DeserializeOwned,
-        R: RangeBounds<K>,
-        V: DeserializeOwned,
-    >(
+    fn range<K: Serialize + DeserializeOwned, R: RangeBounds<K>, V: DeserializeOwned>(
         &self,
         range: R,
     ) -> Result<impl DoubleEndedIterator<Item = (K, V)>, Error>;
     fn clear(&self) -> Result<(), Error>;
     fn contains_key<K: Serialize>(&self, key: &K) -> Result<bool, Error>;
     fn len(&self) -> usize;
-    fn remove<K: Serialize, V: DeserializeOwned>(
-        &self,
-        key: &K,
-    ) -> Result<Option<V>, Error>;
+    fn remove<K: Serialize, V: DeserializeOwned>(&self, key: &K) -> Result<Option<V>, Error>;
 }
 
 /// A relaxed tree structure that allows any bincode key or value type
@@ -183,49 +175,28 @@ pub trait RelaxedSerdeTree {
 /// This trait is not compatible with serde's `Serialize`/`Deserialize`.
 pub trait RelaxedBincodeTree {
     fn new(tree: sled::Tree) -> Self;
-    fn get<K: Encode, V: Decode>(
-        &self,
-        key: &K,
-    ) -> Result<Option<V>, Error>;
+    fn get<K: Encode, V: Decode>(&self, key: &K) -> Result<Option<V>, Error>;
     fn get_or_init<F: FnOnce() -> T, K: Encode, T: Encode + Decode>(
         &self,
         key: K,
         init_func: F,
     ) -> Result<Option<T>, Error>;
-    fn insert<K: Encode, V: Encode + Decode>(
-        &self,
-        key: &K,
-        value: &V,
-    ) -> Result<Option<V>, Error>;
-    fn first<K: Decode, V: Decode>(
-        &self,
-    ) -> Result<Option<(K, V)>, Error>;
-    fn last<K: Decode, V: Decode>(
-        &self,
-    ) -> Result<Option<(K, V)>, Error>;
-    fn pop_max<K: Decode, V: Decode>(
-        &self,
-    ) -> Result<Option<(K, V)>, Error>;
-    fn iter<K: Decode, V: Decode>(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = (K, V)>;
+    fn insert<K: Encode, V: Encode + Decode>(&self, key: &K, value: &V)
+        -> Result<Option<V>, Error>;
+    fn first<K: Decode, V: Decode>(&self) -> Result<Option<(K, V)>, Error>;
+    fn last<K: Decode, V: Decode>(&self) -> Result<Option<(K, V)>, Error>;
+    fn pop_max<K: Decode, V: Decode>(&self) -> Result<Option<(K, V)>, Error>;
+    fn iter<K: Decode, V: Decode>(&self) -> impl DoubleEndedIterator<Item = (K, V)>;
     fn range_key_bytes<K: AsRef<[u8]>, R: RangeBounds<K>, V: Decode>(
         &self,
         range: R,
     ) -> impl DoubleEndedIterator<Item = (Vec<u8>, V)>;
-    fn range<
-        K: Encode + Decode,
-        R: RangeBounds<K>,
-        V: Decode,
-    >(
+    fn range<K: Encode + Decode, R: RangeBounds<K>, V: Decode>(
         &self,
         range: R,
     ) -> Result<impl DoubleEndedIterator<Item = (K, V)>, Error>;
     fn clear(&self) -> Result<(), Error>;
     fn contains_key<K: Encode>(&self, key: &K) -> Result<bool, Error>;
     fn len(&self) -> usize;
-    fn remove<K: Encode, V: Decode>(
-        &self,
-        key: &K,
-    ) -> Result<Option<V>, Error>;
+    fn remove<K: Encode, V: Decode>(&self, key: &K) -> Result<Option<V>, Error>;
 }

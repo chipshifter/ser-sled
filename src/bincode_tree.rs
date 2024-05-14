@@ -2,12 +2,8 @@ use bincode::{Decode, Encode};
 use std::ops::Bound::{Excluded, Included, Unbounded};
 use std::{marker::PhantomData, ops::RangeBounds};
 
+use crate::BINCODE_CONFIG;
 use crate::{error::Error, RelaxedBincodeTree, StrictTree};
-
-/// Sled is optimised to work with big-endian bytes
-/// See <https://github.com/spacejam/sled?tab=readme-ov-file#a-note-on-lexicographic-ordering-and-endianness>
-pub const BINCODE_CONFIG: bincode::config::Configuration<bincode::config::BigEndian> =
-    bincode::config::standard().with_big_endian();
 
 /// A tree that allows you to pass any key or value as long as they
 /// are serialisable and deserialisable.
