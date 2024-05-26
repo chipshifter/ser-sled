@@ -1,6 +1,6 @@
 [package]
 name = "ser-sled"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["chipshifter"]
 edition = "2021"
 description = "A basic wrapper to use Serialize/Deserialize structs inside Sled (using bincode)"
