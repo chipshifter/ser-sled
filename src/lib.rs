@@ -61,7 +61,7 @@ impl<T: Encode + Decode> TryInto<IVec> for BincodeItem<T> {
 
 #[derive(Clone)]
 pub struct Db {
-    inner_db: sled::Db,
+    pub inner_db: sled::Db,
 }
 
 impl Db {
