@@ -1,3 +1,5 @@
+use bincode::{Decode, Encode};
+use bincode_tree::{BincodeTree, RelaxedTree};
 /// Copyright (C) 2024 Chipshifter
 ///
 /// This program is free software: you can redistribute it and/or modify
@@ -13,8 +15,6 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program.  If not, see <https://www.gnu.org/licenses/>.
 use error::Error;
-use bincode::{Decode, Encode};
-use bincode_tree::{BincodeTree, RelaxedTree};
 #[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -27,9 +27,9 @@ use sled::IVec;
 use std::ops::RangeBounds;
 
 pub mod bincode_tree;
+pub mod error;
 #[cfg(feature = "serde")]
 pub mod serde_tree;
-pub mod error;
 pub mod tests;
 
 impl From<sled::Db> for Db {
@@ -65,6 +65,10 @@ pub struct Db {
 }
 
 impl Db {
+    pub fn generate_id(&self) -> Result<u64, Error> {
+        Ok(self.inner_db.generate_id()?)
+    }
+
     pub fn open_relaxed_bincode_tree(&self, tree_name: &str) -> Result<RelaxedTree, Error> {
         let tree = self.inner_db.open_tree(tree_name)?;
 
